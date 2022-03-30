@@ -21,15 +21,15 @@ class PortainerDeploy(client: Client[IO], deployTarget: PortainerDeployTarget) e
     implicit val codec: Codec[AuthResponse] = deriveCodec
   }
 
-  case class StackEntry(Name: String, Id: String)
+  case class StackEntry(Name: String, Id: Long)
 
   object StackEntry {
     implicit val codec: Codec[StackEntry] = deriveCodec
   }
 
   case class Stack(
-                    EndpointId: String,
-                    Env: String,
+                    EndpointId: Long,
+                    Env: Json,
                   )
 
   object Stack {
@@ -44,7 +44,7 @@ class PortainerDeploy(client: Client[IO], deployTarget: PortainerDeployTarget) e
 
   case class StackFileUpdate(
                               StackFileContent: String,
-                              Env: String,
+                              Env: Json,
                               Prune: Boolean,
                             )
 
