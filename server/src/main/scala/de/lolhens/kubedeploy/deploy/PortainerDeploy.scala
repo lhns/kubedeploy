@@ -52,7 +52,7 @@ class PortainerDeploy(client: Client[IO], deployTarget: PortainerDeployTarget) e
     implicit val codec: Codec[StackFileUpdate] = deriveCodec
   }
 
-  override protected def deploy(request: DeployRequest): EitherT[IO, DeployFailure, DeploySuccess] = {
+  override def deploy(request: DeployRequest): EitherT[IO, DeployFailure, DeploySuccess] = {
     for {
       _ <- EitherT.cond[IO](!request.validate, (), DeployFailure("validate not supported"))
       authResponse <- EitherT.right(client.expect[JsonOf[AuthResponse]](Request[IO](
