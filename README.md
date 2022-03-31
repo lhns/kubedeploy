@@ -9,7 +9,34 @@ choice.
 curl -sSf -H "Authorization: Bearer <secret>" -d "{
   \"resource\": \"my-app\",
   \"value\": \"ghcr.io/my/app:1.0.0\"
-}" http://localhost:8080/deploy/<target>
+}" http://my-kubedeploy:8080/deploy/<my-target>
+```
+
+### Stack Config
+
+```yaml
+version: '3.8'
+
+services:
+  kubedeploy:
+    image: ghcr.io/lolhens/kubedeploy:latest
+    environment:
+      CONFIG: |
+        {
+          "targets": [
+            {
+              "id": "<my-target>",
+              "secret": "<secret>",
+              "portainer": {
+                "url": "http://my-portainer",
+                "username": "<username>",
+                "password": "<password>"
+              }
+            }
+          ]
+        }
+    ports:
+      - "8080:8080"
 ```
 
 ## Supported
