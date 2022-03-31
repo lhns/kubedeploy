@@ -4,8 +4,8 @@ name := (ThisBuild / name).value
 
 lazy val commonSettings: Seq[Setting[_]] = Seq(
   version := {
-    val Tag = "v?([0-9]+(?:\\.[0-9]+)+(?:[+-].*)?)".r
-    sys.env.get("CI_COMMIT_TAG").collect { case Tag(tag) => tag }
+    val Tag = "refs/tags/v?([0-9]+(?:\\.[0-9]+)+(?:[+-].*)?)".r
+    sys.env.get("CI_VERSION").collect { case Tag(tag) => tag }
       .getOrElse("0.0.1-SNAPSHOT")
   },
 

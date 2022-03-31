@@ -122,6 +122,6 @@ class PortainerDeploy(client: Client[IO], deployTarget: PortainerDeployTarget) e
         Prune = true
       )))))
     } yield
-      DeploySuccess(validated = false)
+      DeploySuccess(awaitedStatus = false)
   }
 }

@@ -23,10 +23,10 @@ object DeployResult {
             DeployFailure(surrogate.errorMessage.getOrElse(""))
 
           case Status.Current =>
-            DeploySuccess(validated = true)
+            DeploySuccess(awaitedStatus = true)
 
           case _ =>
-            DeploySuccess(validated = false)
+            DeploySuccess(awaitedStatus = false)
         }
       },
       codec.contramap {
@@ -44,7 +44,7 @@ object DeployResult {
     )
   }
 
-  case class DeploySuccess(validated: Boolean) extends DeployResult
+  case class DeploySuccess(awaitedStatus: Boolean) extends DeployResult
 
   case class DeployFailure(message: String, notFound: Boolean = false) extends DeployResult
 
