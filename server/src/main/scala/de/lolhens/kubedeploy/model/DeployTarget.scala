@@ -8,6 +8,7 @@ import org.http4s.Uri
 
 case class DeployTarget(
                          id: DeployTargetId,
+                         secret: Secret[String],
                          portainer: Option[PortainerDeployTarget],
                        )
 

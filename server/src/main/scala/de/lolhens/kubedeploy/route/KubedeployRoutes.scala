@@ -1,7 +1,7 @@
 package de.lolhens.kubedeploy.route
 
-import cats.data.OptionT
-import cats.effect.{IO, Sync}
+import cats.data.{EitherT, OptionT}
+import cats.effect.IO
 import de.lolhens.http4s.errors.syntax._
 import de.lolhens.http4s.errors.{ErrorResponseEncoder, ErrorResponseLogger}
 import de.lolhens.kubedeploy.JsonOf
@@ -11,19 +11,19 @@ import de.lolhens.kubedeploy.model.{DeployRequest, DeployResult, DeployTarget}
 import de.lolhens.kubedeploy.repo.DeployTargetRepo
 import org.http4s.client.Client
 import org.http4s.dsl.io._
-import org.http4s.{HttpRoutes, Response, Status}
+import org.http4s.headers.Authorization
+import org.http4s.{AuthScheme, Credentials, HttpRoutes}
 import org.log4s.getLogger
 
 class KubedeployRoutes(client: Client[IO], deployTargetRepo: DeployTargetRepo[IO]) {
   private val logger = getLogger
-  private implicit val throwableErrorResponseEncoder: ErrorResponseEncoder[Throwable] = new ErrorResponseEncoder[Throwable] {
-    override def response[F[_] : Sync](status: Status, error: Throwable): F[Response[F]] =
-      Sync[F].delay(Response[F](status).withEntity(JsonOf(DeployFailure(error.stackTraceString): DeployResult)))
-  }
-  private implicit val stringErrorResponseEncoder: ErrorResponseEncoder[String] = new ErrorResponseEncoder[String] {
-    override def response[F[_] : Sync](status: Status, error: String): F[Response[F]] =
-      Sync[F].delay(Response[F](status).withEntity(JsonOf(DeployFailure(error): DeployResult)))
-  }
+  private implicit val deployFailureErrorResponseEncoder: ErrorResponseEncoder[DeployFailure] =
+    ErrorResponseEncoder.instance((_, deployFailure) => JsonOf(deployFailure: DeployResult))
+  private implicit val throwableErrorResponseEncoder: ErrorResponseEncoder[Throwable] =
+    deployFailureErrorResponseEncoder.contramap(e => DeployFailure(e.stackTraceString))
+  private implicit val stringErrorResponseEncoder: ErrorResponseEncoder[String] =
+    deployFailureErrorResponseEncoder.contramap(e => DeployFailure(e))
+  private implicit val deployFailureErrorResponseLogger: ErrorResponseLogger[DeployFailure] = ErrorResponseLogger.stringLogger(logger.logger).contramap(_.message)
   private implicit val throwableErrorResponseLogger: ErrorResponseLogger[Throwable] = ErrorResponseLogger.throwableLogger(logger.logger)
   private implicit val stringErrorResponseLogger: ErrorResponseLogger[String] = ErrorResponseLogger.stringLogger(logger.logger)
 
@@ -31,13 +31,18 @@ class KubedeployRoutes(client: Client[IO], deployTargetRepo: DeployTargetRepo[IO
     case request@POST -> Root =>
       (for {
         deployRequest <- request.as[JsonOf[DeployRequest]].map(_.value).orErrorResponse(BadRequest)
-        deployTarget <- OptionT(deployTargetRepo.get(deployRequest.target)).toRight("target not found").toErrorResponse(NotFound)
+        deployTarget <- OptionT(deployTargetRepo.get(deployRequest.target))
+          .toRight(DeployFailure("target not found")).toErrorResponse(NotFound)
+        _ <- EitherT.fromOption[IO](request.headers.get[Authorization].collect {
+          case Authorization(Credentials.Token(AuthScheme.Bearer, secret)) if secret == deployTarget.secret.value =>
+            ()
+        }, "not authorized").toErrorResponse(Unauthorized)
         deploy <- IO(deployTarget match {
-          case DeployTarget(_, Some(portainerDeployTarget)) =>
+          case DeployTarget(_, _, Some(portainerDeployTarget)) =>
             new PortainerDeploy(client, portainerDeployTarget)
         }).orErrorResponse(InternalServerError)
-        deployResult <- deploy.deploy(deployRequest).merge[DeployResult].orErrorResponse(InternalServerError)
-        response <- Ok(JsonOf(deployResult)).orErrorResponse(InternalServerError)
+        deployResult <- deploy.deploy(deployRequest).toErrorResponse(InternalServerError)
+        response <- Ok(JsonOf(deployResult: DeployResult)).orErrorResponse(InternalServerError)
       } yield
         response)
         .merge

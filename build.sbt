@@ -52,7 +52,7 @@ lazy val server = project
 
     libraryDependencies ++= Seq(
       "ch.qos.logback" % "logback-classic" % "1.2.11",
-      "de.lolhens" %% "http4s-errors" % "0.4.2",
+      "de.lolhens" %% "http4s-errors" % "0.5.0",
       "io.circe" %% "circe-core" % V.circe,
       "io.circe" %% "circe-generic" % V.circe,
       "io.circe" %% "circe-parser" % V.circe,
