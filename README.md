@@ -1,5 +1,9 @@
 # kubedeploy
 
+[![Docker Workflow](https://github.com/LolHens/kubedeploy/workflows/build/badge.svg)](https://github.com/LolHens/kubedeploy/actions?query=workflow%3Abuild%20release)
+[![Release Notes](https://img.shields.io/github/release/LolHens/kubedeploy.svg?maxAge=3600)](https://github.com/LolHens/kubedeploy/releases/latest)
+[![Apache License 2.0](https://img.shields.io/github/license/LolHens/kubedeploy.svg?maxAge=3600)](https://www.apache.org/licenses/LICENSE-2.0)
+
 A vendor-neutral and modular way to deploy your App with `curl` from a CI/CD-Pipeline to your Container Cluster of
 choice.
 
@@ -49,3 +53,6 @@ services:
 - Docker Swarm via Docker API
 - GitOps (Argo CD, Flux)
 - Kubernetes API
+
+## License
+This project uses the Apache 2.0 License. See the file called LICENSE.
