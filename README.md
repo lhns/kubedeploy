@@ -1,6 +1,6 @@
 # kubedeploy
 
-[![Docker Workflow](https://github.com/LolHens/kubedeploy/workflows/build/badge.svg)](https://github.com/LolHens/kubedeploy/actions?query=workflow%3Abuild%20release)
+[![Docker Workflow](https://github.com/LolHens/kubedeploy/workflows/build/badge.svg)](https://github.com/LolHens/kubedeploy/actions?query=workflow%3Abuild)
 [![Release Notes](https://img.shields.io/github/release/LolHens/kubedeploy.svg?maxAge=3600)](https://github.com/LolHens/kubedeploy/releases/latest)
 [![Apache License 2.0](https://img.shields.io/github/license/LolHens/kubedeploy.svg?maxAge=3600)](https://www.apache.org/licenses/LICENSE-2.0)
 
