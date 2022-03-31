@@ -9,7 +9,7 @@ choice.
 curl -sSf -H "Authorization: Bearer <secret>" -d "{
   \"resource\": \"my-app\",
   \"value\": \"ghcr.io/my/app:1.0.0\"
-}" http://my-kubedeploy:8080/deploy/<my-target>
+}" http://my-kubedeploy:8080/deploy/<target-id>
 ```
 
 ### Stack Config
@@ -25,7 +25,7 @@ services:
         {
           "targets": [
             {
-              "id": "<my-target>",
+              "id": "<target-id>",
               "secret": "<secret>",
               "portainer": {
                 "url": "http://my-portainer",
