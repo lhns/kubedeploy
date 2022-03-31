@@ -7,6 +7,7 @@ import de.lolhens.http4s.errors.{ErrorResponseEncoder, ErrorResponseLogger}
 import de.lolhens.kubedeploy.JsonOf
 import de.lolhens.kubedeploy.deploy.PortainerDeploy
 import de.lolhens.kubedeploy.model.DeployResult.DeployFailure
+import de.lolhens.kubedeploy.model.DeployTarget.DeployTargetId
 import de.lolhens.kubedeploy.model.{DeployRequest, DeployResult, DeployTarget}
 import de.lolhens.kubedeploy.repo.DeployTargetRepo
 import org.http4s.client.Client
@@ -29,15 +30,15 @@ class KubedeployRoutes(client: Client[IO], deployTargetRepo: DeployTargetRepo[IO
 
   def toRoutes: HttpRoutes[IO] = HttpRoutes.of {
     case GET -> Root / "health" => Ok()
-    case request@POST -> Root / "deploy" =>
+    case request@POST -> Root / "deploy" / target =>
       (for {
-        deployRequest <- request.as[JsonOf[DeployRequest]].map(_.value).orErrorResponse(BadRequest)
-        deployTarget <- OptionT(deployTargetRepo.get(deployRequest.target))
+        deployTarget <- OptionT(deployTargetRepo.get(DeployTargetId(target)))
           .toRight(DeployFailure("target not found")).toErrorResponse(NotFound)
         _ <- EitherT.fromOption[IO](request.headers.get[Authorization].collect {
           case Authorization(Credentials.Token(AuthScheme.Bearer, secret)) if secret == deployTarget.secret.value =>
             ()
         }, "not authorized").toErrorResponse(Unauthorized)
+        deployRequest <- request.as[JsonOf[DeployRequest]].map(_.value).orErrorResponse(BadRequest)
         deploy <- IO(deployTarget match {
           case DeployTarget(_, _, Some(portainerDeployTarget)) =>
             new PortainerDeploy(client, portainerDeployTarget)

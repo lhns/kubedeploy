@@ -2,12 +2,10 @@ package de.lolhens.kubedeploy.model
 
 import cats.syntax.functor._
 import de.lolhens.kubedeploy.model.DeployRequest.Locator
-import de.lolhens.kubedeploy.model.DeployTarget.DeployTargetId
 import io.circe.generic.semiauto._
 import io.circe.{Codec, Decoder, Encoder, Json}
 
 case class DeployRequest(
-                          target: DeployTargetId,
                           resource: String,
                           value: String,
                           locator: Option[Locator],
