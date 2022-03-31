@@ -28,7 +28,8 @@ class KubedeployRoutes(client: Client[IO], deployTargetRepo: DeployTargetRepo[IO
   private implicit val stringErrorResponseLogger: ErrorResponseLogger[String] = ErrorResponseLogger.stringLogger(logger.logger)
 
   def toRoutes: HttpRoutes[IO] = HttpRoutes.of {
-    case request@POST -> Root =>
+    case GET -> Root / "health" => Ok()
+    case request@POST -> Root / "deploy" =>
       (for {
         deployRequest <- request.as[JsonOf[DeployRequest]].map(_.value).orErrorResponse(BadRequest)
         deployTarget <- OptionT(deployTargetRepo.get(deployRequest.target))
