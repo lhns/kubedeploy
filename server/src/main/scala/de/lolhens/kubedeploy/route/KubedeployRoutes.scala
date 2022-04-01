@@ -2,13 +2,15 @@ package de.lolhens.kubedeploy.route
 
 import cats.data.{EitherT, OptionT}
 import cats.effect.IO
+import cats.syntax.semigroup._
 import de.lolhens.http4s.errors.syntax._
 import de.lolhens.http4s.errors.{ErrorResponseEncoder, ErrorResponseLogger}
 import de.lolhens.kubedeploy.JsonOf
 import de.lolhens.kubedeploy.deploy.PortainerDeploy
+import de.lolhens.kubedeploy.model.DeployRequest.DeployRequests
 import de.lolhens.kubedeploy.model.DeployResult.DeployFailure
 import de.lolhens.kubedeploy.model.DeployTarget.DeployTargetId
-import de.lolhens.kubedeploy.model.{DeployRequest, DeployResult, DeployTarget}
+import de.lolhens.kubedeploy.model.{DeployResult, DeployTarget}
 import de.lolhens.kubedeploy.repo.DeployTargetRepo
 import org.http4s.client.Client
 import org.http4s.dsl.io._
@@ -38,12 +40,20 @@ class KubedeployRoutes(client: Client[IO], deployTargetRepo: DeployTargetRepo[IO
           case Authorization(Credentials.Token(AuthScheme.Bearer, secret)) if secret == deployTarget.secret.value =>
             ()
         }, "not authorized").toErrorResponse(Unauthorized)
-        deployRequest <- request.as[JsonOf[DeployRequest]].map(_.value).orErrorResponse(BadRequest)
+        deployRequests <- request.as[JsonOf[DeployRequests]].map(_.value).orErrorResponse(BadRequest)
         deploy <- IO(deployTarget match {
           case DeployTarget(_, _, Some(portainerDeployTarget)) =>
             new PortainerDeploy(client, portainerDeployTarget)
         }).orErrorResponse(InternalServerError)
-        deployResult <- deploy.deploy(deployRequest).toErrorResponse(InternalServerError)
+        deployResult <- EitherT {
+          IO.parTraverseN(8)(deployRequests.deployRequests) { deployRequest =>
+            deploy.deploy(deployRequest).value
+          }.map(_
+            .map[DeployResult](_.merge)
+            .reduce(_ |+| _)
+            .toEither
+          )
+        }.toErrorResponse(InternalServerError)
         response <- Ok(JsonOf(deployResult: DeployResult)).orErrorResponse(InternalServerError)
       } yield
         response)

@@ -19,6 +19,15 @@ case class DeployRequest(
 object DeployRequest {
   implicit val codec: Codec[DeployRequest] = deriveCodec
 
+  case class DeployRequests(deployRequests: Seq[DeployRequest])
+
+  object DeployRequests {
+    implicit val codec: Codec[DeployRequests] = Codec.from(
+      Decoder[Seq[DeployRequest]].or(Decoder[DeployRequest].map(Seq(_))).map(DeployRequests(_)),
+      Encoder[Seq[DeployRequest]].contramap(_.deployRequests)
+    )
+  }
+
   sealed trait Locator
 
   object Locator {

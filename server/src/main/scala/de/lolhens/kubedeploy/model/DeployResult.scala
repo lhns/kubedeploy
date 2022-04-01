@@ -1,9 +1,13 @@
 package de.lolhens.kubedeploy.model
 
+import cats.kernel.Semigroup
+import de.lolhens.kubedeploy.model.DeployResult.{DeployFailure, DeploySuccess}
 import io.circe.generic.semiauto._
 import io.circe.{Codec, Decoder, Encoder}
 
-sealed trait DeployResult
+sealed trait DeployResult {
+  def toEither: Either[DeployFailure, DeploySuccess]
+}
 
 object DeployResult {
   implicit val codec: Codec[DeployResult] = {
@@ -44,9 +48,22 @@ object DeployResult {
     )
   }
 
-  case class DeploySuccess(awaitedStatus: Boolean) extends DeployResult
+  implicit val semigroup: Semigroup[DeployResult] = Semigroup.instance {
+    case (DeployFailure(_, false), b@DeployFailure(_, true)) => b
+    case (a: DeployFailure, _: DeployFailure) => a
+    case (a: DeployFailure, _) => a
+    case (_, b: DeployFailure) => b
+    case (DeploySuccess(aAwaitedStatus), DeploySuccess(bAwaitedStatus)) =>
+      DeploySuccess(aAwaitedStatus && bAwaitedStatus)
+  }
 
-  case class DeployFailure(message: String, notFound: Boolean = false) extends DeployResult
+  case class DeploySuccess(awaitedStatus: Boolean) extends DeployResult {
+    override def toEither: Either[DeployFailure, DeploySuccess] = Right(this)
+  }
+
+  case class DeployFailure(message: String, notFound: Boolean = false) extends DeployResult {
+    override def toEither: Either[DeployFailure, DeploySuccess] = Left(this)
+  }
 
   // https://github.com/kubernetes-sigs/cli-utils/blob/master/pkg/kstatus/README.md#statuses
   sealed abstract class Status(val string: String, val failure: Boolean)
