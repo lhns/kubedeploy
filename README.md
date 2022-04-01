@@ -23,7 +23,7 @@ version: '3.8'
 
 services:
   kubedeploy:
-    image: ghcr.io/lolhens/kubedeploy:latest
+    image: ghcr.io/lhns/kubedeploy:latest
     environment:
       CONFIG: |
         {
