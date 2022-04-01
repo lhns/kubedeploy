@@ -3,6 +3,7 @@ package de.lolhens.kubedeploy.route
 import cats.data.{EitherT, OptionT}
 import cats.effect.IO
 import cats.syntax.semigroup._
+import cats.syntax.traverse._
 import de.lolhens.http4s.errors.syntax._
 import de.lolhens.http4s.errors.{ErrorResponseEncoder, ErrorResponseLogger}
 import de.lolhens.kubedeploy.JsonOf
@@ -46,9 +47,9 @@ class KubedeployRoutes(client: Client[IO], deployTargetRepo: DeployTargetRepo[IO
             new PortainerDeploy(client, portainerDeployTarget)
         }).orErrorResponse(InternalServerError)
         deployResult <- EitherT {
-          IO.parTraverseN(8)(deployRequests.deployRequests) { deployRequest =>
+          deployRequests.deployRequests.map { deployRequest =>
             deploy.deploy(deployRequest).value
-          }.map(_
+          }.sequence.map(_
             .map[DeployResult](_.merge)
             .reduce(_ |+| _)
             .toEither
