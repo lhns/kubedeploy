@@ -41,3 +41,9 @@ project/plugins/project/
 
 #Java
 *.class
+
+#VSCode
+.VSCode
+.metals
+metals.sbt
+.bloop
