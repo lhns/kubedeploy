@@ -56,6 +56,7 @@ lazy val server = project
       "io.circe" %% "circe-core" % V.circe,
       "io.circe" %% "circe-generic" % V.circe,
       "io.circe" %% "circe-parser" % V.circe,
+      "io.circe" %% "circe-yaml" % V.circe,
       "org.bidib.com.github.markusbernhardt" % "proxy-vole" % "1.0.16",
       "org.http4s" %% "http4s-blaze-server" % V.http4s,
       "org.http4s" %% "http4s-circe" % V.http4s,

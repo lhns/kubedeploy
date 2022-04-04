@@ -2,13 +2,15 @@ package de.lolhens.kubedeploy
 
 import cats.effect._
 import com.github.markusbernhardt.proxy.ProxySearch
+import de.lolhens.kubedeploy.deploy.{DeployBackend, PortainerDeployBackend}
 import de.lolhens.kubedeploy.model.DeployTarget
-import de.lolhens.kubedeploy.repo.DeployTargetRepo
+import de.lolhens.kubedeploy.model.DeployTarget.DeployTargetId
 import de.lolhens.kubedeploy.route.KubedeployRoutes
 import io.circe.Codec
 import io.circe.generic.semiauto._
 import io.circe.syntax._
 import org.http4s.blaze.server.BlazeServerBuilder
+import org.http4s.client.Client
 import org.http4s.implicits._
 import org.http4s.jdkhttpclient.JdkHttpClient
 import org.log4s.getLogger
@@ -44,11 +46,19 @@ object Server extends IOApp {
     applicationResource(config).use(_ => IO.never)
   }
 
+  def loadBackends(config: Config, client: Client[IO]): Map[DeployTargetId, DeployBackend] = config.targets.map {
+    case target@DeployTarget(id, _, Some(portainer)) =>
+      id -> new PortainerDeployBackend(target, portainer, client)
+
+    case target =>
+      throw new RuntimeException("target invalid: " + target.id)
+  }.toMap
+
   private def applicationResource(config: Config): Resource[IO, Unit] =
     for {
       client <- JdkHttpClient.simple[IO]
-      deployTargetRepo = DeployTargetRepo.fromSeq(config.targets)
-      routes = new KubedeployRoutes(client, deployTargetRepo)
+      backends = loadBackends(config, client)
+      routes = new KubedeployRoutes(backends)
       _ <- BlazeServerBuilder[IO]
         .bindHttp(8080, "0.0.0.0")
         .withHttpApp(
