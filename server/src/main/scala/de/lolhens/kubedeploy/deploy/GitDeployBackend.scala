@@ -49,7 +49,6 @@ class GitDeployBackend(
         })
 
         newStringIO.map { newString =>
-          println(newString)
           Some(newString.getBytes(StandardCharsets.UTF_8))
         }
       },

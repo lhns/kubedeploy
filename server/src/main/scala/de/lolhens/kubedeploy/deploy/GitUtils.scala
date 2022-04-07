@@ -9,7 +9,7 @@ import org.eclipse.jgit.internal.storage.dfs.{DfsRepositoryDescription, InMemory
 import org.eclipse.jgit.lib._
 import org.eclipse.jgit.revwalk.RevWalk
 import org.eclipse.jgit.transport.PushConfig.PushDefault
-import org.eclipse.jgit.transport.{CredentialsProvider, RefSpec, TagOpt}
+import org.eclipse.jgit.transport.{CredentialsProvider, RefSpec}
 import org.eclipse.jgit.treewalk.TreeWalk
 import org.eclipse.jgit.treewalk.filter.PathFilter
 
@@ -18,26 +18,6 @@ import scala.jdk.CollectionConverters._
 import scala.util.chaining._
 
 object GitUtils {
-  def fetchRepository(
-                       remote: String,
-                       credentialsProvider: Option[CredentialsProvider]
-                     ): IO[Repository] = IO.blocking {
-    val repository = new InMemoryRepository(new DfsRepositoryDescription())
-    val result = new Git(repository).fetch
-      .setRemote(remote)
-      .setCredentialsProvider(credentialsProvider.orNull)
-      .setRefSpecs(new RefSpec(s"+${Constants.R_HEADS}*:${Constants.R_HEADS}*"))
-      .setTagOpt(TagOpt.FETCH_TAGS)
-      .call
-
-    result.getAdvertisedRefs.asScala.find(_.getName == Constants.HEAD).foreach { headRef =>
-      val refUpdate = repository.getRefDatabase.newUpdate(Constants.HEAD, true)
-      refUpdate.link(headRef.getTarget.getName)
-    }
-
-    repository
-  }
-
   def updateFile(
                   remote: String,
                   credentialsProvider: Option[CredentialsProvider],
@@ -67,7 +47,24 @@ object GitUtils {
     } yield ()
   }
 
-  def branchRef(branchName: String): String = Constants.R_HEADS + branchName
+  def fetchRepository(
+                       remote: String,
+                       credentialsProvider: Option[CredentialsProvider]
+                     ): IO[Repository] = IO.blocking {
+    val repository = new InMemoryRepository(new DfsRepositoryDescription())
+    val result = new Git(repository).fetch
+      .setRemote(remote)
+      .setCredentialsProvider(credentialsProvider.orNull)
+      .setRefSpecs(new RefSpec(s"+${Constants.R_HEADS}*:${Constants.R_HEADS}*"))
+      .call
+
+    result.getAdvertisedRefs.asScala.find(_.getName == Constants.HEAD).foreach { headRef =>
+      val refUpdate = repository.getRefDatabase.newUpdate(Constants.HEAD, true)
+      refUpdate.link(headRef.getTarget.getName)
+    }
+
+    repository
+  }
 
   implicit class RepositoryOps(val repository: Repository) extends AnyVal {
     def readFile(ref: String, path: String): IO[Option[(Array[Byte], FileMode)]] = IO {
@@ -100,17 +97,42 @@ object GitUtils {
         // insert blob
         val blobId = inserter.insert(Constants.OBJ_BLOB, bytes)
 
-        // insert tree
-        val treeId = inserter.insert(
-          new TreeFormatter().tap { treeFormatter =>
-            treeFormatter.append(path, fileMode, blobId)
+        def insertMergedTree(treeIdOption: Option[ObjectId], pathSegments: List[String]): ObjectId = {
+          var entries = Map.empty[String, (FileMode, ObjectId)]
 
-            // add existing tree
+          treeIdOption.foreach { treeId =>
             val treeWalk = new TreeWalk(repository)
-            treeWalk.addTree(new RevWalk(repository).parseCommit(resolvedRef).getTree)
+            treeWalk.addTree(treeId)
             while (treeWalk.next)
-              treeFormatter.append(treeWalk.getNameString, treeWalk.getFileMode(0), treeWalk.getObjectId(0))
+              entries = entries + (treeWalk.getNameString -> (treeWalk.getFileMode(0), treeWalk.getObjectId(0)))
           }
+
+          pathSegments match {
+            case Seq() =>
+
+            case Seq(fileName) =>
+              entries = entries + (fileName -> (fileMode, blobId))
+
+            case pathSegment +: tail =>
+              val subtreeId = insertMergedTree(
+                treeIdOption = entries.get(pathSegment).map(_._2),
+                pathSegments = tail,
+              )
+              entries = entries + (pathSegment -> (FileMode.TREE, subtreeId))
+          }
+
+          inserter.insert(new TreeFormatter().tap { treeFormatter =>
+            entries.toSeq.sortBy(_._1).foreach {
+              case (name, (fileMode, objectId)) =>
+                treeFormatter.append(name, fileMode, objectId)
+            }
+          })
+        }
+
+        // insert tree
+        val treeId = insertMergedTree(
+          treeIdOption = Some(new RevWalk(repository).parseCommit(resolvedRef).getTree),
+          pathSegments = path.replaceAll("^/", "").split("/").toList,
         )
 
         // insert commit
