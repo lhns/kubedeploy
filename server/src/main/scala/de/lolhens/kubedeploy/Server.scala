@@ -2,7 +2,7 @@ package de.lolhens.kubedeploy
 
 import cats.effect._
 import com.github.markusbernhardt.proxy.ProxySearch
-import de.lolhens.kubedeploy.deploy.{DeployBackend, PortainerDeployBackend}
+import de.lolhens.kubedeploy.deploy.{DeployBackend, GitDeployBackend, PortainerDeployBackend}
 import de.lolhens.kubedeploy.model.DeployTarget
 import de.lolhens.kubedeploy.model.DeployTarget.DeployTargetId
 import de.lolhens.kubedeploy.route.KubedeployRoutes
@@ -47,8 +47,11 @@ object Server extends IOApp {
   }
 
   def loadBackends(config: Config, client: Client[IO]): Map[DeployTargetId, DeployBackend] = config.targets.map {
-    case target@DeployTarget(id, _, Some(portainer)) =>
+    case target@DeployTarget(id, _, None, Some(portainer)) =>
       id -> new PortainerDeployBackend(target, portainer, client)
+
+    case target@DeployTarget(id, _, Some(git), None) =>
+      id -> new GitDeployBackend(target, git)
 
     case target =>
       throw new RuntimeException("target invalid: " + target.id)

@@ -102,11 +102,12 @@ services:
 
 - Docker Swarm via Portainer API
   - doesn't support deployment status yet
+- GitOps
+  - doesn't support deployment status yet (via Argo CD, Flux or Kubernetes API)
 
 ## Planned
 
 - Docker Swarm via Docker API
-- GitOps (Argo CD, Flux)
 - Kubernetes API
 
 ## License
