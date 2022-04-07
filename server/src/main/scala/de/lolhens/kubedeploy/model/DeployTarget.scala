@@ -1,7 +1,8 @@
 package de.lolhens.kubedeploy.model
 
 import de.lolhens.kubedeploy.Secret
-import de.lolhens.kubedeploy.model.DeployTarget.{DeployTargetId, PortainerDeployTarget}
+import de.lolhens.kubedeploy.model.DeployTarget.GitDeployTarget.Committer
+import de.lolhens.kubedeploy.model.DeployTarget.{DeployTargetId, GitDeployTarget, PortainerDeployTarget}
 import io.circe.generic.semiauto._
 import io.circe.{Codec, Decoder, Encoder}
 import org.http4s.Uri
@@ -9,6 +10,7 @@ import org.http4s.Uri
 case class DeployTarget(
                          id: DeployTargetId,
                          secret: Secret[String],
+                         git: Option[GitDeployTarget],
                          portainer: Option[PortainerDeployTarget],
                        )
 
@@ -24,6 +26,11 @@ object DeployTarget {
     )
   }
 
+  private implicit val uriCodec: Codec[Uri] = Codec.from(
+    Decoder.decodeString.map(Uri.unsafeFromString),
+    Encoder.encodeString.contramap(_.renderString)
+  )
+
   case class PortainerDeployTarget(
                                     url: Uri,
                                     username: String,
@@ -31,11 +38,24 @@ object DeployTarget {
                                   )
 
   object PortainerDeployTarget {
-    private implicit val uriCodec: Codec[Uri] = Codec.from(
-      Decoder.decodeString.map(Uri.unsafeFromString),
-      Encoder.encodeString.contramap(_.renderString)
-    )
-
     implicit val codec: Codec[PortainerDeployTarget] = deriveCodec
+  }
+
+  case class GitDeployTarget(
+                              url: Uri,
+                              username: String,
+                              password: Secret[String],
+                              branch: Option[String],
+                              committer: Committer,
+                            )
+
+  object GitDeployTarget {
+    implicit val codec: Codec[GitDeployTarget] = deriveCodec
+
+    case class Committer(name: String, email: String)
+
+    object Committer {
+      implicit val codec: Codec[Committer] = deriveCodec
+    }
   }
 }

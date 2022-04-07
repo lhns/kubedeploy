@@ -1,50 +1,63 @@
 package de.lolhens.kubedeploy.deploy
 
-import cats.effect.unsafe.IORuntime
+import cats.data.EitherT
+import cats.effect.IO
+import cats.syntax.apply._
 import de.lolhens.kubedeploy.deploy.GitUtils._
-import org.eclipse.jgit.api.Git
+import de.lolhens.kubedeploy.model.DeployAction.{JsonAction, RegexAction, YamlAction}
+import de.lolhens.kubedeploy.model.DeployResult.{DeployFailure, DeploySuccess}
+import de.lolhens.kubedeploy.model.DeployTarget.GitDeployTarget
+import de.lolhens.kubedeploy.model.{Deploy, DeployResult, DeployTarget}
 import org.eclipse.jgit.lib._
 import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider
+import org.log4s.getLogger
 
-import scala.jdk.CollectionConverters._
+import java.nio.charset.StandardCharsets
 
-object GitDeployBackend {
+class GitDeployBackend(
+                        val target: DeployTarget,
+                        git: GitDeployTarget,
+                      ) extends DeployBackend with ConsolidateActions {
+  private val logger = getLogger
 
+  private val credentialsProvider = new UsernamePasswordCredentialsProvider(git.username, git.password.value)
+  private val personIdent = new PersonIdent(git.committer.name, git.committer.email)
 
-  def updateFile(
-                  remote: String,
-                  username: String,
-                  password: String,
-                  branch: String,
-                  path: String,
-                  update: Array[Byte] => Array[Byte],
-                  message: String,
-                  person: PersonIdent,
-                  force: Boolean = false,
-                ) = {
-    for {
-      repository <- fetchRepository(remote, new UsernamePasswordCredentialsProvider(username, password))
-      bytes <- repository.readFile(repository.getBranch, path)
-    } yield ()
-  }
+  override def deploy(request: Deploy): EitherT[IO, DeployResult.DeployFailure, DeployResult.DeploySuccess] = {
+    val result: IO[Unit] = updateFile(
+      git.url.renderString,
+      Some(credentialsProvider),
+      git.branch,
+      request.resource,
+      { bytesOption =>
+        val string = bytesOption.map(new String(_, StandardCharsets.UTF_8)).getOrElse("")
 
-  def main(args: Array[String]): Unit = {
+        val newStringIO = request.actions.foldLeft(IO {
+          string
+        })((acc, action) => acc.map { string =>
+          action match {
+            case regexAction: RegexAction =>
+              regexAction.transform(string)
+            case yamlAction: YamlAction =>
+              yamlAction.transform(string)
+            case jsonAction: JsonAction =>
+              jsonAction.transform(string)
+            case e =>
+              logger.warn("unsupported action: " + e)
+              string
+          }
+        })
 
+        newStringIO.map { newString =>
+          println(newString)
+          Some(newString.getBytes(StandardCharsets.UTF_8))
+        }
+      },
+      s"Update ${request.resource}",
+      personIdent
+    )
 
-    val repo = fetchRepository(remote, credentials).unsafeRunSync()(IORuntime.global)
-    val refs = repo.getRefDatabase.getRefsByPrefix("refs/").asScala.toList
-    println(refs)
-    println(repo.getConfig.getSections.asScala.toList)
-
-    println(repo.getRefDatabase.getRefs.asScala.map(_.getName))
-    println(Git.lsRemoteRepository().setRemote(remote)
-      .setCredentialsProvider(credentials).callAsMap().get("HEAD"))
-    //repo.getConfig.getNames().asScala.toList
-    /*
-        println(repo.readFile("main", "README.md").unsafeRunSync()(IORuntime.global).map(new String(_, StandardCharsets.UTF_8)))
-
-        val commitId = repo.commitFile("main", "README.md", "Hello World 3!".getBytes(StandardCharsets.UTF_8)).unsafeRunSync()(IORuntime.global)
-        repo.push(remote, credentials).unsafeRunSync()(IORuntime.global)
-    */
+    EitherT.right[DeployFailure](result) *>
+      EitherT.rightT[IO, DeployFailure](DeploySuccess(awaitedStatus = false))
   }
 }
