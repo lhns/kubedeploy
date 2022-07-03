@@ -64,6 +64,6 @@ lazy val server = project
       "org.http4s" %% "http4s-dsl" % V.http4s,
       "org.http4s" %% "http4s-jdk-http-client" % "0.7.0",
       "org.typelevel" %% "cats-core" % "2.8.0",
-      "org.typelevel" %% "cats-effect" % "3.3.9",
+      "org.typelevel" %% "cats-effect" % "3.3.13",
     ),
   )
