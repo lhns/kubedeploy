@@ -35,7 +35,7 @@ lazy val commonSettings: Seq[Setting[_]] = Seq(
 
 val V = new {
   val circe = "0.14.1"
-  val http4s = "0.23.11"
+  val http4s = "0.23.12"
 }
 
 lazy val root = project.in(file("."))
@@ -57,8 +57,8 @@ lazy val server = project
       "io.circe" %% "circe-generic" % V.circe,
       "io.circe" %% "circe-parser" % V.circe,
       "io.circe" %% "circe-yaml" % V.circe,
-      "org.bidib.com.github.markusbernhardt" % "proxy-vole" % "1.0.16",
-      "org.eclipse.jgit" % "org.eclipse.jgit" % "6.2.0.202206071550-r",
+      "org.bidib.com.github.markusbernhardt" % "proxy-vole" % "1.0.17",
+      "org.eclipse.jgit" % "org.eclipse.jgit" % "6.1.0.202203080745-r",
       "org.http4s" %% "http4s-blaze-server" % V.http4s,
       "org.http4s" %% "http4s-circe" % V.http4s,
       "org.http4s" %% "http4s-dsl" % V.http4s,
