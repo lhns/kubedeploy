@@ -34,7 +34,7 @@ lazy val commonSettings: Seq[Setting[_]] = Seq(
 )
 
 val V = new {
-  val circe = "0.14.1"
+  val circe = "0.14.2"
   val http4s = "0.23.12"
 }
 
