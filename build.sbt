@@ -35,7 +35,7 @@ lazy val commonSettings: Seq[Setting[_]] = Seq(
 
 val V = new {
   val circe = "0.14.1"
-  val http4s = "0.23.12"
+  val http4s = "0.23.14"
 }
 
 lazy val root = project.in(file("."))
