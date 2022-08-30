@@ -12,7 +12,7 @@ lazy val commonSettings: Seq[Setting[_]] = Seq(
   addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.1"),
 
   libraryDependencies ++= Seq(
-    "ch.qos.logback" % "logback-classic" % "1.2.8" % Test,
+    "ch.qos.logback" % "logback-classic" % "1.2.11" % Test,
     "de.lolhens" %% "munit-tagless-final" % "0.2.0" % Test,
     "org.scalameta" %% "munit" % "0.7.29" % Test,
   ),
