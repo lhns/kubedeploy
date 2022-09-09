@@ -58,7 +58,7 @@ lazy val server = project
       "io.circe" %% "circe-parser" % V.circe,
       "io.circe" %% "circe-yaml" % V.circe,
       "org.bidib.com.github.markusbernhardt" % "proxy-vole" % "1.0.17",
-      "org.eclipse.jgit" % "org.eclipse.jgit" % "6.2.0.202206071550-r",
+      "org.eclipse.jgit" % "org.eclipse.jgit" % "6.3.0.202209071007-r",
       "org.http4s" %% "http4s-blaze-server" % V.http4s,
       "org.http4s" %% "http4s-circe" % V.http4s,
       "org.http4s" %% "http4s-dsl" % V.http4s,
