@@ -51,7 +51,7 @@ lazy val server = project
     name := "kubedeploy",
 
     libraryDependencies ++= Seq(
-      "ch.qos.logback" % "logback-classic" % "1.4.3",
+      "ch.qos.logback" % "logback-classic" % "1.4.4",
       "de.lolhens" %% "http4s-errors" % "0.5.0",
       "io.circe" %% "circe-core" % V.circe,
       "io.circe" %% "circe-generic" % V.circe,
