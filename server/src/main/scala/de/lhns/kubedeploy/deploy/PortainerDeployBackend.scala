@@ -1,13 +1,13 @@
-package de.lolhens.kubedeploy.deploy
+package de.lhns.kubedeploy.deploy
 
 import cats.data.EitherT
 import cats.effect.{Async, IO, Resource}
 import cats.syntax.all._
-import de.lolhens.kubedeploy.JsonOf
-import de.lolhens.kubedeploy.model.DeployAction.{EnvAction, ImageAction, JsonAction, RegexAction, YamlAction}
-import de.lolhens.kubedeploy.model.DeployResult.{DeployFailure, DeploySuccess}
-import de.lolhens.kubedeploy.model.DeployTarget.PortainerDeployTarget
-import de.lolhens.kubedeploy.model.{Deploy, DeployTarget}
+import de.lhns.kubedeploy.JsonOf
+import de.lhns.kubedeploy.model.DeployAction.{EnvAction, ImageAction, JsonAction, RegexAction, YamlAction}
+import de.lhns.kubedeploy.model.DeployResult.{DeployFailure, DeploySuccess}
+import de.lhns.kubedeploy.model.DeployTarget.PortainerDeployTarget
+import de.lhns.kubedeploy.model.{Deploy, DeployTarget}
 import io.circe.generic.semiauto._
 import io.circe.syntax._
 import io.circe.{Codec, Json}

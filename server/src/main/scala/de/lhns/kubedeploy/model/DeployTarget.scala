@@ -1,8 +1,8 @@
-package de.lolhens.kubedeploy.model
+package de.lhns.kubedeploy.model
 
-import de.lolhens.kubedeploy.Secret
-import de.lolhens.kubedeploy.model.DeployTarget.GitDeployTarget.Committer
-import de.lolhens.kubedeploy.model.DeployTarget.{DeployTargetId, GitDeployTarget, PortainerDeployTarget}
+import de.lhns.kubedeploy.Secret
+import de.lhns.kubedeploy.model.DeployTarget.GitDeployTarget.Committer
+import de.lhns.kubedeploy.model.DeployTarget.{DeployTargetId, GitDeployTarget, PortainerDeployTarget}
 import io.circe.generic.semiauto._
 import io.circe.{Codec, Decoder, Encoder}
 import org.http4s.Uri

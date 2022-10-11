@@ -1,4 +1,4 @@
-package de.lolhens.kubedeploy.model
+package de.lhns.kubedeploy.model
 
 import cats.syntax.functor._
 import io.circe._

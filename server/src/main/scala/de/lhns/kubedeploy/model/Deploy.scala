@@ -1,4 +1,4 @@
-package de.lolhens.kubedeploy.model
+package de.lhns.kubedeploy.model
 
 import io.circe.generic.semiauto._
 import io.circe.{Codec, Decoder, Encoder}

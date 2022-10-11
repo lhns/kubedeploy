@@ -1,13 +1,13 @@
-package de.lolhens.kubedeploy.deploy
+package de.lhns.kubedeploy.deploy
 
 import cats.data.EitherT
 import cats.effect.IO
 import cats.effect.std.Queue
 import cats.effect.unsafe.IORuntime
 import cats.syntax.all._
-import de.lolhens.kubedeploy.model.Deploy.Deploys
-import de.lolhens.kubedeploy.model.DeployResult.{DeployFailure, DeploySuccess}
-import de.lolhens.kubedeploy.model.{Deploy, DeployResult}
+import de.lhns.kubedeploy.model.Deploy.Deploys
+import de.lhns.kubedeploy.model.DeployResult.{DeployFailure, DeploySuccess}
+import de.lhns.kubedeploy.model.{Deploy, DeployResult}
 
 trait ConsolidateActions extends DeployBackend {
   private val locksQ: Queue[IO, Set[(Option[String], String)]] =

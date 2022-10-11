@@ -1,6 +1,6 @@
-package de.lolhens.kubedeploy
+package de.lhns.kubedeploy
 
-import de.lolhens.kubedeploy.model.DeployTarget
+import de.lhns.kubedeploy.model.DeployTarget
 import io.circe.Codec
 import io.circe.generic.semiauto._
 

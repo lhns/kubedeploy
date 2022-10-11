@@ -1,4 +1,4 @@
-package de.lolhens.kubedeploy.deploy
+package de.lhns.kubedeploy.deploy
 
 import cats.effect.IO
 import cats.syntax.traverse._

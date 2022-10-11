@@ -1,4 +1,4 @@
-package de.lolhens.kubedeploy
+package de.lhns.kubedeploy
 
 import cats.effect.{IO, unsafe}
 import munit.TaglessFinalSuite

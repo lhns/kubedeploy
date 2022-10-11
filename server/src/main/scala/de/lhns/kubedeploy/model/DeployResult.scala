@@ -1,7 +1,7 @@
-package de.lolhens.kubedeploy.model
+package de.lhns.kubedeploy.model
 
 import cats.kernel.Semigroup
-import de.lolhens.kubedeploy.model.DeployResult.{DeployFailure, DeploySuccess}
+import de.lhns.kubedeploy.model.DeployResult.{DeployFailure, DeploySuccess}
 import io.circe.generic.semiauto._
 import io.circe.{Codec, Decoder, Encoder}
 

@@ -1,12 +1,12 @@
-package de.lolhens.kubedeploy
+package de.lhns.kubedeploy
 
 import cats.effect._
 import com.comcast.ip4s._
 import com.github.markusbernhardt.proxy.ProxySearch
-import de.lolhens.kubedeploy.deploy.{DeployBackend, GitDeployBackend, PortainerDeployBackend}
-import de.lolhens.kubedeploy.model.DeployTarget
-import de.lolhens.kubedeploy.model.DeployTarget.DeployTargetId
-import de.lolhens.kubedeploy.route.KubedeployRoutes
+import de.lhns.kubedeploy.deploy.{DeployBackend, GitDeployBackend, PortainerDeployBackend}
+import de.lhns.kubedeploy.model.DeployTarget
+import de.lhns.kubedeploy.model.DeployTarget.DeployTargetId
+import de.lhns.kubedeploy.route.KubedeployRoutes
 import de.lolhens.trustmanager.TrustManagers._
 import io.circe.syntax._
 import org.http4s.HttpApp
