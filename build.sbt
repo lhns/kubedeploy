@@ -2,6 +2,22 @@ ThisBuild / scalaVersion := "2.13.9"
 ThisBuild / name := (server / name).value
 name := (ThisBuild / name).value
 
+val V = new {
+  val cats = "2.8.0"
+  val catsEffect = "3.3.14"
+  val circe = "0.14.3"
+  val circeConfig = "0.10.0"
+  val circeYaml = "0.14.1"
+  val http4s = "0.23.16"
+  val http4sErrors = "0.5.0"
+  val http4sJdkHttpClient = "0.7.0"
+  val jgit = "6.3.0.202209071007-r"
+  val logbackClassic = "1.4.3"
+  val munit = "0.7.29"
+  val munitTaglessFinal = "0.2.0"
+  val proxyVole = "1.0.17"
+}
+
 lazy val commonSettings: Seq[Setting[_]] = Seq(
   version := {
     val Tag = "refs/tags/v?([0-9]+(?:\\.[0-9]+)+(?:[+-].*)?)".r
@@ -12,9 +28,9 @@ lazy val commonSettings: Seq[Setting[_]] = Seq(
   addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.1"),
 
   libraryDependencies ++= Seq(
-    "ch.qos.logback" % "logback-classic" % "1.2.11" % Test,
-    "de.lolhens" %% "munit-tagless-final" % "0.2.0" % Test,
-    "org.scalameta" %% "munit" % "0.7.29" % Test,
+    "ch.qos.logback" % "logback-classic" % V.logbackClassic % Test,
+    "de.lolhens" %% "munit-tagless-final" % V.munitTaglessFinal % Test,
+    "org.scalameta" %% "munit" % V.munit % Test,
   ),
 
   testFrameworks += new TestFramework("munit.Framework"),
@@ -26,17 +42,11 @@ lazy val commonSettings: Seq[Setting[_]] = Seq(
 
   assembly / assemblyMergeStrategy := {
     case PathList(paths@_*) if paths.last == "module-info.class" => MergeStrategy.discard
-    case PathList("META-INF", "jpms.args") => MergeStrategy.discard
     case x =>
       val oldStrategy = (assembly / assemblyMergeStrategy).value
       oldStrategy(x)
   },
 )
-
-val V = new {
-  val circe = "0.14.1"
-  val http4s = "0.23.12"
-}
 
 lazy val root = project.in(file("."))
   .settings(
@@ -51,19 +61,20 @@ lazy val server = project
     name := "kubedeploy",
 
     libraryDependencies ++= Seq(
-      "ch.qos.logback" % "logback-classic" % "1.4.4",
-      "de.lolhens" %% "http4s-errors" % "0.5.0",
+      "ch.qos.logback" % "logback-classic" % V.logbackClassic,
+      "com.hunorkovacs" %% "circe-config" % V.circeConfig,
+      "de.lolhens" %% "http4s-errors" % V.http4sErrors,
       "io.circe" %% "circe-core" % V.circe,
       "io.circe" %% "circe-generic" % V.circe,
       "io.circe" %% "circe-parser" % V.circe,
-      "io.circe" %% "circe-yaml" % V.circe,
-      "org.bidib.com.github.markusbernhardt" % "proxy-vole" % "1.0.17",
-      "org.eclipse.jgit" % "org.eclipse.jgit" % "6.3.0.202209071007-r",
-      "org.http4s" %% "http4s-blaze-server" % V.http4s,
+      "io.circe" %% "circe-yaml" % V.circeYaml,
+      "org.bidib.com.github.markusbernhardt" % "proxy-vole" % V.proxyVole,
+      "org.eclipse.jgit" % "org.eclipse.jgit" % V.jgit,
+      "org.http4s" %% "http4s-ember-server" % V.http4s,
       "org.http4s" %% "http4s-circe" % V.http4s,
       "org.http4s" %% "http4s-dsl" % V.http4s,
-      "org.http4s" %% "http4s-jdk-http-client" % "0.7.0",
-      "org.typelevel" %% "cats-core" % "2.8.0",
-      "org.typelevel" %% "cats-effect" % "3.3.14",
+      "org.http4s" %% "http4s-jdk-http-client" % V.http4sJdkHttpClient,
+      "org.typelevel" %% "cats-core" % V.cats,
+      "org.typelevel" %% "cats-effect" % V.catsEffect,
     ),
   )

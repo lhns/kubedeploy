@@ -1,6 +1,7 @@
 package de.lolhens.kubedeploy
 
 import cats.effect._
+import com.comcast.ip4s._
 import com.github.markusbernhardt.proxy.ProxySearch
 import de.lolhens.kubedeploy.deploy.{DeployBackend, GitDeployBackend, PortainerDeployBackend}
 import de.lolhens.kubedeploy.model.DeployTarget
@@ -9,10 +10,13 @@ import de.lolhens.kubedeploy.route.KubedeployRoutes
 import io.circe.Codec
 import io.circe.generic.semiauto._
 import io.circe.syntax._
-import org.http4s.blaze.server.BlazeServerBuilder
+import org.http4s.HttpApp
 import org.http4s.client.Client
+import org.http4s.ember.server.EmberServerBuilder
 import org.http4s.implicits._
 import org.http4s.jdkhttpclient.JdkHttpClient
+import org.http4s.server.Server
+import org.http4s.server.middleware.ErrorAction
 import org.log4s.getLogger
 
 import java.net.ProxySelector
@@ -25,6 +29,11 @@ object Server extends IOApp {
 
   object Config {
     implicit val codec: Codec[Config] = deriveCodec
+
+    implicit val fromEnv: Config = io.circe.parser.decode[Config](
+      Option(System.getenv("CONFIG"))
+        .getOrElse(throw new IllegalArgumentException("Missing variable: CONFIG"))
+    ).toTry.get
   }
 
   override def run(args: List[String]): IO[ExitCode] = {
@@ -36,15 +45,21 @@ object Server extends IOApp {
         .getOrElse(ProxySelector.getDefault)
     )
 
-    val config = io.circe.parser.decode[Config](
-      Option(System.getenv("CONFIG"))
-        .getOrElse(throw new IllegalArgumentException("Missing variable: CONFIG"))
-    ).toTry.get
-
-    logger.info(s"CONFIG:\n${config.asJson.spaces2}\n")
-
-    applicationResource(config).use(_ => IO.never)
+    applicationResource(Config.fromEnv).use(_ => IO.never)
   }
+
+  def applicationResource(config: Config): Resource[IO, Unit] =
+    for {
+      _ <- Resource.eval(IO(logger.info(s"CONFIG: ${config.asJson.spaces2}")))
+      client <- JdkHttpClient.simple[IO]
+      backends = loadBackends(config, client)
+      routes = new KubedeployRoutes(backends)
+      _ <- serverResource(
+        host"0.0.0.0",
+        port"8080",
+        routes.toRoutes.orNotFound
+      )
+    } yield ()
 
   def loadBackends(config: Config, client: Client[IO]): Map[DeployTargetId, DeployBackend] = config.targets.map {
     case target@DeployTarget(id, _, None, Some(portainer)) =>
@@ -57,16 +72,16 @@ object Server extends IOApp {
       throw new RuntimeException("target invalid: " + target.id)
   }.toMap
 
-  private def applicationResource(config: Config): Resource[IO, Unit] =
-    for {
-      client <- JdkHttpClient.simple[IO]
-      backends = loadBackends(config, client)
-      routes = new KubedeployRoutes(backends)
-      _ <- BlazeServerBuilder[IO]
-        .bindHttp(8080, "0.0.0.0")
-        .withHttpApp(
-          routes.toRoutes.orNotFound
-        )
-        .resource
-    } yield ()
+  def serverResource(host: Host, port: Port, http: HttpApp[IO]): Resource[IO, Server] =
+    EmberServerBuilder
+      .default[IO]
+      .withHost(host)
+      .withPort(port)
+      .withHttpApp(
+        ErrorAction.log(
+          http = http,
+          messageFailureLogAction = (t, msg) => IO(logger.debug(t)(msg)),
+          serviceErrorLogAction = (t, msg) => IO(logger.error(t)(msg))
+        ))
+      .build
 }
