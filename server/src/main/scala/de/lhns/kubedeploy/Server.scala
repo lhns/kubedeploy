@@ -63,8 +63,7 @@ object Server extends IOApp {
   }.toMap
 
   def serverResource(host: Host, port: Port, http: HttpApp[IO]): Resource[IO, Server] =
-    EmberServerBuilder
-      .default[IO]
+    EmberServerBuilder.default[IO]
       .withHost(host)
       .withPort(port)
       .withHttpApp(
