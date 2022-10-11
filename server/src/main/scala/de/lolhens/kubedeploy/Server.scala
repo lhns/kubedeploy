@@ -7,8 +7,7 @@ import de.lolhens.kubedeploy.deploy.{DeployBackend, GitDeployBackend, PortainerD
 import de.lolhens.kubedeploy.model.DeployTarget
 import de.lolhens.kubedeploy.model.DeployTarget.DeployTargetId
 import de.lolhens.kubedeploy.route.KubedeployRoutes
-import io.circe.Codec
-import io.circe.generic.semiauto._
+import de.lolhens.trustmanager.TrustManagers._
 import io.circe.syntax._
 import org.http4s.HttpApp
 import org.http4s.client.Client
@@ -25,17 +24,6 @@ import scala.util.chaining._
 object Server extends IOApp {
   private[this] val logger = getLogger
 
-  case class Config(targets: Seq[DeployTarget])
-
-  object Config {
-    implicit val codec: Codec[Config] = deriveCodec
-
-    implicit val fromEnv: Config = io.circe.parser.decode[Config](
-      Option(System.getenv("CONFIG"))
-        .getOrElse(throw new IllegalArgumentException("Missing variable: CONFIG"))
-    ).toTry.get
-  }
-
   override def run(args: List[String]): IO[ExitCode] = {
     ProxySelector.setDefault(
       Option(new ProxySearch().tap { s =>
@@ -44,6 +32,8 @@ object Server extends IOApp {
       }.getProxySelector)
         .getOrElse(ProxySelector.getDefault)
     )
+
+    setDefaultTrustManager(jreTrustManagerWithEnvVar)
 
     applicationResource(Config.fromEnv).use(_ => IO.never)
   }

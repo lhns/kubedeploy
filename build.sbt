@@ -16,6 +16,7 @@ val V = new {
   val munit = "0.7.29"
   val munitTaglessFinal = "0.2.0"
   val proxyVole = "1.0.17"
+  val trustmanagerUtils = "0.3.4"
 }
 
 lazy val commonSettings: Seq[Setting[_]] = Seq(
@@ -64,6 +65,7 @@ lazy val server = project
       "ch.qos.logback" % "logback-classic" % V.logbackClassic,
       "com.hunorkovacs" %% "circe-config" % V.circeConfig,
       "de.lolhens" %% "http4s-errors" % V.http4sErrors,
+      "de.lolhens" %% "scala-trustmanager-utils" % V.trustmanagerUtils,
       "io.circe" %% "circe-core" % V.circe,
       "io.circe" %% "circe-generic" % V.circe,
       "io.circe" %% "circe-parser" % V.circe,
