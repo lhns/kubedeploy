@@ -21,7 +21,7 @@ import org.log4s.getLogger
 import java.net.ProxySelector
 import scala.util.chaining._
 
-object Server extends IOApp {
+object Main extends IOApp {
   private[this] val logger = getLogger
 
   override def run(args: List[String]): IO[ExitCode] = {
@@ -59,18 +59,17 @@ object Server extends IOApp {
       id -> new GitDeployBackend(target, git)
 
     case target =>
-      throw new RuntimeException("target invalid: " + target.id)
+      throw new RuntimeException("invalid target: " + target.id)
   }.toMap
 
   def serverResource(host: Host, port: Port, http: HttpApp[IO]): Resource[IO, Server] =
     EmberServerBuilder.default[IO]
       .withHost(host)
       .withPort(port)
-      .withHttpApp(
-        ErrorAction.log(
-          http = http,
-          messageFailureLogAction = (t, msg) => IO(logger.debug(t)(msg)),
-          serviceErrorLogAction = (t, msg) => IO(logger.error(t)(msg))
-        ))
+      .withHttpApp(ErrorAction.log(
+        http = http,
+        messageFailureLogAction = (t, msg) => IO(logger.debug(t)(msg)),
+        serviceErrorLogAction = (t, msg) => IO(logger.error(t)(msg))
+      ))
       .build
 }
