@@ -1,5 +1,4 @@
-ARG DOCKER_PROXY=""
-FROM ${DOCKER_PROXY}openjdk:17
+FROM openjdk:17
 
 COPY server/target/scala-*/*.sh.bat ./
 
