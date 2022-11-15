@@ -57,6 +57,7 @@ class PortainerDeployBackend(
                               StackFileContent: String,
                               Env: Seq[EnvVar],
                               Prune: Boolean,
+                              PullImage: Boolean,
                             )
 
   object StackFileUpdate {
@@ -126,7 +127,8 @@ class PortainerDeployBackend(
           StackFileUpdate(
             StackFileContent = stackFile,
             Env = stack.value.Env,
-            Prune = true
+            Prune = false,
+            PullImage = false,
           )
         })((acc, action) => acc.map { stackFileUpdate =>
           action match {

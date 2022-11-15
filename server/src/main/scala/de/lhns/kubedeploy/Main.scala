@@ -19,6 +19,7 @@ import org.http4s.server.middleware.ErrorAction
 import org.log4s.getLogger
 
 import java.net.ProxySelector
+import scala.concurrent.duration._
 import scala.util.chaining._
 
 object Main extends IOApp {
@@ -35,18 +36,18 @@ object Main extends IOApp {
 
     setDefaultTrustManager(jreTrustManagerWithEnvVar)
 
-    applicationResource(Config.fromEnv).use(_ => IO.never)
+    applicationResource.use(_ => IO.never)
   }
 
-  def applicationResource(config: Config): Resource[IO, Unit] =
+  def applicationResource: Resource[IO, Unit] =
     for {
-      _ <- Resource.eval(IO(logger.info(s"CONFIG: ${config.asJson.spaces2}")))
+      config <- Resource.eval(Config.fromEnv[IO])
+      _ = logger.info(s"CONFIG: ${config.asJson.spaces2}")
       client <- JdkHttpClient.simple[IO]
       backends = loadBackends(config, client)
       routes = new KubedeployRoutes(backends)
       _ <- serverResource(
-        host"0.0.0.0",
-        port"8080",
+        SocketAddress(host"0.0.0.0", port"8080"),
         routes.toRoutes.orNotFound
       )
     } yield ()
@@ -62,14 +63,15 @@ object Main extends IOApp {
       throw new RuntimeException("invalid target: " + target.id)
   }.toMap
 
-  def serverResource(host: Host, port: Port, http: HttpApp[IO]): Resource[IO, Server] =
-    EmberServerBuilder.default[IO]
-      .withHost(host)
-      .withPort(port)
+  def serverResource[F[_] : Async](socketAddress: SocketAddress[Host], http: HttpApp[F]): Resource[F, Server] =
+    EmberServerBuilder.default[F]
+      .withHost(socketAddress.host)
+      .withPort(socketAddress.port)
       .withHttpApp(ErrorAction.log(
         http = http,
-        messageFailureLogAction = (t, msg) => IO(logger.debug(t)(msg)),
-        serviceErrorLogAction = (t, msg) => IO(logger.error(t)(msg))
+        messageFailureLogAction = (t, msg) => Async[F].delay(logger.debug(t)(msg)),
+        serviceErrorLogAction = (t, msg) => Async[F].delay(logger.error(t)(msg))
       ))
+      .withShutdownTimeout(1.second)
       .build
 }
