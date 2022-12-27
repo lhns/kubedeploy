@@ -1,6 +1,7 @@
 package de.lhns.kubedeploy
 
 import cats.effect._
+import cats.effect.std.Env
 import com.comcast.ip4s._
 import com.github.markusbernhardt.proxy.ProxySearch
 import de.lhns.kubedeploy.deploy.{DeployBackend, GitDeployBackend, PortainerDeployBackend}
@@ -41,9 +42,9 @@ object Main extends IOApp {
 
   def applicationResource: Resource[IO, Unit] =
     for {
-      config <- Resource.eval(Config.fromEnv[IO])
+      config <- Resource.eval(Config.fromEnv(Env.make[IO]))
       _ = logger.info(s"CONFIG: ${config.asJson.spaces2}")
-      client <- JdkHttpClient.simple[IO]
+      client <- Resource.eval(JdkHttpClient.simple[IO])
       backends = loadBackends(config, client)
       routes = new KubedeployRoutes(backends)
       _ <- serverResource(

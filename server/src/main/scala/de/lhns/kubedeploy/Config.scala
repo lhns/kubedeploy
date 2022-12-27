@@ -12,8 +12,8 @@ case class Config(targets: Seq[DeployTarget])
 object Config {
   implicit val codec: Codec[Config] = deriveCodec
 
-  def fromEnv[F[_] : Sync]: F[Config] =
-    OptionT(Env.make[F].get("CONFIG"))
+  def fromEnv[F[_] : Sync](env: Env[F]): F[Config] =
+    OptionT(env.get("CONFIG"))
       .toRight(new IllegalArgumentException("Missing environment variable: CONFIG"))
       .subflatMap(io.circe.config.parser.decode[Config](_))
       .rethrowT
