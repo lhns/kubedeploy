@@ -59,8 +59,8 @@ lazy val server = project
     libraryDependencies ++= Seq(
       "ch.qos.logback" % "logback-classic" % V.logbackClassic,
       "com.hunorkovacs" %% "circe-config" % V.circeConfig,
-      "de.lolhens" %% "http4s-errors" % V.http4sErrors,
-      "de.lolhens" %% "scala-trustmanager-utils" % V.trustmanagerUtils,
+      "de.lhns" %% "http4s-errors" % V.http4sErrors,
+      "de.lhns" %% "scala-trustmanager-utils" % V.trustmanagerUtils,
       "io.circe" %% "circe-core" % V.circe,
       "io.circe" %% "circe-generic" % V.circe,
       "io.circe" %% "circe-parser" % V.circe,
