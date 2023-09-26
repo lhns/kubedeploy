@@ -8,7 +8,7 @@ import de.lhns.kubedeploy.deploy.{DeployBackend, GitDeployBackend, PortainerDepl
 import de.lhns.kubedeploy.model.DeployTarget
 import de.lhns.kubedeploy.model.DeployTarget.DeployTargetId
 import de.lhns.kubedeploy.route.KubedeployRoutes
-import de.lolhens.trustmanager.TrustManagers._
+import de.lhns.trustmanager.TrustManagers._
 import io.circe.syntax._
 import org.http4s.HttpApp
 import org.http4s.client.Client
