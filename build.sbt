@@ -8,7 +8,7 @@ val V = new {
   val catsEffect = "3.5.2"
   val circe = "0.14.6"
   val circeConfig = "0.10.0"
-  val circeYaml = "0.14.2"
+  val circeYaml = "0.15.1"
   val http4s = "0.23.23"
   val http4sErrors = "0.5.1"
   val http4sJdkHttpClient = "0.9.1"
@@ -16,7 +16,7 @@ val V = new {
   val logbackClassic = "1.4.11"
   val munit = "0.7.29"
   val munitTaglessFinal = "0.2.0"
-  val proxyVole = "1.1.0"
+  val proxyVole = "1.1.2"
   val trustmanagerUtils = "1.0.0"
 }
 
