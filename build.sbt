@@ -1,4 +1,4 @@
-ThisBuild / scalaVersion := "2.13.16"
+ThisBuild / scalaVersion := "2.13.17"
 ThisBuild / name := (server / name).value
 name := (ThisBuild / name).value
 
