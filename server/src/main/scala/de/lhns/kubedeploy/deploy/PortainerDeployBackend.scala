@@ -32,7 +32,7 @@ class PortainerDeployBackend(
     implicit val codec: Codec[AuthResponse] = deriveCodec
   }
 
-  case class StackEntry(Name: String, Id: Long)
+  case class StackEntry(Id: Long, Name: String, EndpointId: Long, Status: Int)
 
   object StackEntry {
     implicit val codec: Codec[StackEntry] = deriveCodec
@@ -101,6 +101,11 @@ class PortainerDeployBackend(
   }
 
   override def deploy(request: Deploy): EitherT[IO, DeployFailure, DeploySuccess] = {
+    val (resourceEndpoint: Long, resourceName: String) = request.resource match {
+      case s"$endpoint/$name" => (endpoint.toLong, name)
+      case name => (1, name)
+    }
+
     for {
       authResponse <- EitherT.right(retryClient.expect[JsonOf[AuthResponse]](Request[IO](
         method = Method.POST,
@@ -110,20 +115,29 @@ class PortainerDeployBackend(
         "password" -> portainer.password.value.asJson
       ))))
       authHeader = Authorization(Credentials.Token(AuthScheme.Bearer, authResponse.value.jwt))
-      stackIdOption <- EitherT.right(retryClient.expect[JsonOf[Seq[StackEntry]]](Request[IO](
+      stackEntries <- EitherT.right(retryClient.expect[JsonOf[Seq[StackEntry]]](Request[IO](
         uri = portainer.url / "api" / "stacks",
         headers = Headers(authHeader),
-      )).map(_.value.find(_.Name == request.resource).map(_.Id)))
-      stackId <- EitherT.fromOption[IO](stackIdOption, DeployFailure(s"stack not found: ${request.resource}"))
+      )).map(_.value.filter(e => e.Name == resourceName && e.EndpointId == resourceEndpoint)))
+      _ <- EitherT.cond[IO](
+        stackEntries.size > 1,
+        (),
+        DeployFailure(s"multiple matching stacks found: ${request.resource}")
+      )
+      stackEntry <- EitherT.fromOption[IO](
+        stackEntries.headOption,
+        DeployFailure(s"stack not found: ${request.resource}")
+      )
+      _ <- EitherT.cond[IO](
+        stackEntry.Status == 1,
+        (),
+        DeployFailure(s"stack '${request.resource}' is inactive (status: ${stackEntry.Status})", conflict = true)
+      )
+      stackId = stackEntry.Id
       stack <- EitherT.right(retryClient.expect[JsonOf[Stack]](Request[IO](
         uri = portainer.url / "api" / "stacks" / stackId,
         headers = Headers(authHeader),
       )))
-      _ <- EitherT.cond[IO](
-        stack.value.Status == 1,
-        (),
-        DeployFailure(s"stack '${request.resource}' is inactive (status: ${stack.value.Status})", conflict = true)
-      )
       stackFile <- EitherT.right(retryClient.expect[JsonOf[StackFile]](Request[IO](
         uri = portainer.url / "api" / "stacks" / stackId / "file",
         headers = Headers(authHeader),
