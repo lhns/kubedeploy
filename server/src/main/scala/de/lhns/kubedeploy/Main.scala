@@ -44,7 +44,7 @@ object Main extends IOApp {
     for {
       config <- Resource.eval(Config.fromEnv(Env.make[IO]))
       _ = logger.info(s"CONFIG: ${config.asJson.spaces2}")
-      client <- Resource.eval(JdkHttpClient.simple[IO])
+      client <- JdkHttpClient.simple[IO]
       backends = loadBackends(config, client)
       routes = new KubedeployRoutes(backends)
       _ <- serverResource(
