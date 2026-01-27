@@ -1,19 +1,14 @@
 package de.lhns.kubedeploy
 
-import cats.effect._
-import cats.effect.std.Env
 import com.comcast.ip4s._
 import com.github.markusbernhardt.proxy.ProxySearch
 import de.lhns.kubedeploy.deploy.{DeployBackend, GitDeployBackend, PortainerDeployBackend}
 import de.lhns.kubedeploy.model.DeployTarget
 import de.lhns.kubedeploy.model.DeployTarget.DeployTargetId
 import de.lhns.kubedeploy.route.KubedeployRoutes
-import de.lhns.trustmanager.TrustManagers._
-import io.circe.syntax._
 import org.http4s.HttpApp
 import org.http4s.client.Client
 import org.http4s.ember.server.EmberServerBuilder
-import org.http4s.implicits._
 import org.http4s.jdkhttpclient.JdkHttpClient
 import org.http4s.server.Server
 import org.http4s.server.middleware.ErrorAction
@@ -44,7 +39,7 @@ object Main extends IOApp {
     for {
       config <- Resource.eval(Config.fromEnv(Env.make[IO]))
       _ = logger.info(s"CONFIG: ${config.asJson.spaces2}")
-      client <- Resource.eval(JdkHttpClient.simple[IO])
+      client <- JdkHttpClient.simple[IO]
       backends = loadBackends(config, client)
       routes = new KubedeployRoutes(backends)
       _ <- serverResource(
