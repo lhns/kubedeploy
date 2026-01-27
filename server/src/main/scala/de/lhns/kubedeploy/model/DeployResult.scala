@@ -39,9 +39,9 @@ object DeployResult {
             status = if (validated) Status.Current else Status.Unknown,
             errorMessage = None,
           )
-        case DeployFailure(message, notFound) =>
+        case DeployFailure(message, notFound, conflict) =>
           DeployResultSurrogate(
-            status = if (notFound) Status.NotFound else Status.Failed,
+            status = if (notFound) Status.NotFound else if (conflict) Status.Conflict else Status.Failed,
             errorMessage = Some(message),
           )
       }
@@ -49,7 +49,7 @@ object DeployResult {
   }
 
   implicit val semigroup: Semigroup[DeployResult] = Semigroup.instance {
-    case (DeployFailure(_, false), b@DeployFailure(_, true)) => b
+    case (DeployFailure(_, false, _), b@DeployFailure(_, true, _)) => b
     case (a: DeployFailure, _: DeployFailure) => a
     case (a: DeployFailure, _) => a
     case (_, b: DeployFailure) => b
@@ -61,7 +61,7 @@ object DeployResult {
     override def toEither: Either[DeployFailure, DeploySuccess] = Right(this)
   }
 
-  case class DeployFailure(message: String, notFound: Boolean = false) extends DeployResult {
+  case class DeployFailure(message: String, notFound: Boolean = false, conflict: Boolean = false) extends DeployResult {
     override def toEither: Either[DeployFailure, DeploySuccess] = Left(this)
   }
 
@@ -79,7 +79,9 @@ object DeployResult {
 
     case object Unknown extends Status("Unknown", failure = false)
 
-    val values: Seq[Status] = Seq(InProgress, Failed, Current, NotFound, Unknown)
+    case object Conflict extends Status("Conflict", failure = true)
+
+    val values: Seq[Status] = Seq(InProgress, Failed, Current, NotFound, Unknown, Conflict)
 
     implicit val codec: Codec[Status] = {
       val map = values.map(e => e.string -> e).toMap

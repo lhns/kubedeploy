@@ -1,4 +1,4 @@
-ThisBuild / scalaVersion := "2.13.17"
+ThisBuild / scalaVersion := "2.13.18"
 ThisBuild / name := (server / name).value
 name := (ThisBuild / name).value
 
@@ -9,14 +9,14 @@ val V = new {
   val circe = "0.14.15"
   val circeConfig = "0.10.0"
   val circeYaml = "0.16.1"
-  val http4s = "0.23.32"
+  val http4s = "0.23.33"
   val http4sErrors = "0.5.1"
   val http4sJdkHttpClient = "0.10.0"
-  val jgit = "7.4.0.202509020913-r"
-  val logbackClassic = "1.5.18"
+  val jgit = "7.5.0.202512021534-r"
+  val logbackClassic = "1.5.26"
   val munit = "1.2.1"
   val munitTaglessFinal = "0.2.0"
-  val proxyVole = "1.1.7"
+  val proxyVole = "1.1.8"
   val trustmanagerUtils = "1.1.0"
 }
 
