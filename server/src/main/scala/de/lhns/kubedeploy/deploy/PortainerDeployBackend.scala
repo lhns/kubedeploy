@@ -41,6 +41,7 @@ class PortainerDeployBackend(
   case class Stack(
                     EndpointId: Long,
                     Env: Seq[EnvVar],
+                    Status: Int,
                   )
 
   object Stack {
@@ -118,6 +119,11 @@ class PortainerDeployBackend(
         uri = portainer.url / "api" / "stacks" / stackId,
         headers = Headers(authHeader),
       )))
+      _ <- EitherT.cond[IO](
+        stack.value.Status == 1,
+        (),
+        DeployFailure(s"stack '${request.resource}' is inactive (status: ${stack.value.Status})", conflict = true)
+      )
       stackFile <- EitherT.right(retryClient.expect[JsonOf[StackFile]](Request[IO](
         uri = portainer.url / "api" / "stacks" / stackId / "file",
         headers = Headers(authHeader),

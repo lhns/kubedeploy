@@ -38,7 +38,10 @@ class KubedeployRoutes(backends: Map[DeployTargetId, DeployBackend]) {
           case Authorization(Credentials.Token(AuthScheme.Bearer, secret)) if secret == backend.target.secret.value => ()
         }, "not authorized").toErrorResponse(Unauthorized)
         deploys <- request.as[JsonOf[Deploys]].map(_.value).orErrorResponse(BadRequest)
-        deployResult <- backend.deploy(deploys).toErrorResponse(InternalServerError)
+        deployResult <- backend.deploy(deploys).leftSemiflatMap { failure =>
+          if (failure.conflict) Conflict(JsonOf(failure: DeployResult))
+          else InternalServerError(JsonOf(failure: DeployResult))
+        }
         response <- Ok(JsonOf(deployResult: DeployResult)).orErrorResponse(InternalServerError)
       } yield
         response)
