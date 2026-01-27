@@ -1,4 +1,4 @@
-FROM openjdk:17
+FROM eclipse-temurin:25
 
 COPY server/target/scala-*/*.sh.bat ./
 
