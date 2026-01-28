@@ -120,7 +120,7 @@ class PortainerDeployBackend(
         headers = Headers(authHeader),
       )).map(_.value.filter(e => e.Name == resourceName && e.EndpointId == resourceEndpoint)))
       _ <- EitherT.cond[IO](
-        stackEntries.size > 1,
+        stackEntries.size <= 1,
         (),
         DeployFailure(s"multiple matching stacks found: ${request.resource}")
       )
