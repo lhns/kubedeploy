@@ -39,6 +39,7 @@ class KubedeployRoutes(backends: Map[DeployTargetId, DeployBackend]) {
         }, "not authorized").toErrorResponse(Unauthorized)
         deploys <- request.as[JsonOf[Deploys]].map(_.value).orErrorResponse(BadRequest)
         deployResult <- backend.deploy(deploys).value.orErrorResponse(InternalServerError).flatMap {
+          case notFound@Left(failure) if failure.notFound => notFound.toErrorResponse(NotFound)
           case conflict@Left(failure) if failure.conflict => conflict.toErrorResponse(Conflict)
           case other => other.toErrorResponse(InternalServerError)
         }
