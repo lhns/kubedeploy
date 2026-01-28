@@ -79,6 +79,7 @@ object DeployResult {
 
     case object Unknown extends Status("Unknown", failure = false)
 
+    // doesn't actually match any of the kubernetes status codes, but is helpful in some circumstances
     case object Conflict extends Status("Conflict", failure = true)
 
     val values: Seq[Status] = Seq(InProgress, Failed, Current, NotFound, Unknown, Conflict)
