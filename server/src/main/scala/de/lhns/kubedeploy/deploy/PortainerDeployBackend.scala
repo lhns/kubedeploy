@@ -101,9 +101,9 @@ class PortainerDeployBackend(
   }
 
   override def deploy(request: Deploy): EitherT[IO, DeployFailure, DeploySuccess] = {
-    val (resourceEndpoint: Long, resourceName: String) = request.resource match {
+    val (resourceEndpoint, resourceName): (Long, String) = request.resource match {
       case s"$endpoint/$name" => (endpoint.toLong, name)
-      case name => (1, name)
+      case name => (1L, name)
     }
 
     for {
