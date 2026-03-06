@@ -165,6 +165,23 @@ External cluster (explicit API URL + token):
 }
 ```
 
+External cluster via kubeconfig file:
+
+```json
+{
+  "targets": [
+    {
+      "id": "k8s-kubeconfig",
+      "secret": "<secret>",
+      "kubernetes": {
+        "kubeconfigFile": "/home/app/.kube/config",
+        "defaultNamespace": "default"
+      }
+    }
+  ]
+}
+```
+
 ## Supported
 
 - Docker Swarm via Portainer API

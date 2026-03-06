@@ -9,6 +9,7 @@ import de.lhns.kubedeploy.model.DeployTarget
 import de.lhns.kubedeploy.model.DeployTarget.DeployTargetId
 import de.lhns.kubedeploy.route.KubedeployRoutes
 import de.lhns.trustmanager.TrustManagers._
+import fs2.io.net.Network
 import io.circe.syntax._
 import org.http4s.HttpApp
 import org.http4s.client.Client
@@ -72,7 +73,7 @@ object Main extends IOApp {
       target.id -> backend
   }.toMap
 
-  def serverResource[F[_] : Async](socketAddress: SocketAddress[Host], http: HttpApp[F]): Resource[F, Server] =
+  def serverResource[F[_] : Async : Network](socketAddress: SocketAddress[Host], http: HttpApp[F]): Resource[F, Server] =
     EmberServerBuilder.default[F]
       .withHost(socketAddress.host)
       .withPort(socketAddress.port)

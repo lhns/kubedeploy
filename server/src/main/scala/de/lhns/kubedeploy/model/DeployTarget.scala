@@ -46,6 +46,7 @@ object DeployTarget {
                                      url: Option[Uri],
                                      token: Option[Secret[String]],
                                      serviceAccountTokenFile: Option[String],
+                                     kubeconfigFile: Option[String],
                                      defaultNamespace: Option[String],
                                    )
 

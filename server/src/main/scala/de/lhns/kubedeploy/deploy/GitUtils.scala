@@ -119,6 +119,9 @@ object GitUtils {
                 pathSegments = tail,
               )
               entries = entries + (pathSegment -> (FileMode.TREE, subtreeId))
+
+            case _ =>
+              throw new IllegalStateException(s"unexpected path segments: ${pathSegments.mkString("/")}")
           }
 
           inserter.insert(new TreeFormatter().tap { treeFormatter =>

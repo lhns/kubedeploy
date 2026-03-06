@@ -29,6 +29,7 @@ class KubernetesDeployBackend(
   private val logger = getLogger
 
   private case class KubernetesAuth(baseUri: Uri, token: String)
+  private case class KubeconfigAuth(baseUri: Uri, token: String)
   private case class ResourceRef(apiVersion: String, kind: String, name: String, namespace: Option[String])
 
   override def deploy(request: Deploy): EitherT[IO, DeployFailure, DeploySuccess] = {
@@ -286,25 +287,110 @@ class KubernetesDeployBackend(
   }
 
   private def resolveAuth: IO[Either[DeployFailure, KubernetesAuth]] =
-    (resolveBaseUri, resolveToken).mapN {
-      case (Right(baseUri), Right(token)) => Right(KubernetesAuth(baseUri, token))
-      case (Left(error), _) => Left(error)
-      case (_, Left(error)) => Left(error)
+    resolveKubeconfigAuth.flatMap {
+      case Left(error) =>
+        IO.pure(Left(error))
+      case Right(kubeconfigAuth) =>
+        (resolveBaseUri(kubeconfigAuth.map(_.baseUri)), resolveToken(kubeconfigAuth.map(_.token))).mapN {
+          case (Right(baseUri), Right(token)) => Right(KubernetesAuth(baseUri, token))
+          case (Left(error), _) => Left(error)
+          case (_, Left(error)) => Left(error)
+        }
     }
 
-  private def resolveBaseUri: IO[Either[DeployFailure, Uri]] = IO {
+  private def resolveKubeconfigAuth: IO[Either[DeployFailure, Option[KubeconfigAuth]]] = {
+    val defaultKubeconfigPath = Paths.get(sys.props.getOrElse("user.home", "."), ".kube", "config").toString
+
+    val kubeconfigPath = kubernetes.kubeconfigFile
+      .map(_ -> true)
+      .orElse(sys.env.get("KUBECONFIG").map(_ -> true))
+      .orElse(Some(defaultKubeconfigPath -> false))
+
+    kubeconfigPath match {
+      case None =>
+        IO.pure(Right(None))
+      case Some((pathString, strict)) =>
+        IO.blocking(Paths.get(pathString)).attempt.flatMap {
+          case Left(error) =>
+            if (strict)
+              IO.pure(Left(DeployFailure(s"invalid kubeconfig path '$pathString': ${error.getMessage}")))
+            else
+              IO.pure(Right(None))
+
+          case Right(path) =>
+            IO.blocking(Files.exists(path)).flatMap {
+              case false if strict =>
+                IO.pure(Left(DeployFailure(s"kubeconfig file not found: $pathString")))
+              case false =>
+                IO.pure(Right(None))
+              case true =>
+                IO.blocking(Files.readString(path)).attempt.map {
+                  case Left(error) =>
+                    Left(DeployFailure(s"failed to read kubeconfig file '$pathString': ${error.getMessage}"))
+                  case Right(content) =>
+                    parseKubeconfigAuth(content).map(Some(_))
+                }
+            }
+        }
+    }
+  }
+
+  private def parseKubeconfigAuth(content: String): Either[DeployFailure, KubeconfigAuth] = {
+    def findNamedEntry(entries: Vector[Json], name: String): Option[Json] =
+      entries.find(_.hcursor.get[String]("name").toOption.contains(name))
+
+    for {
+      kubeconfig <- io.circe.yaml.parser.parse(content)
+        .leftMap(error => DeployFailure(s"failed to parse kubeconfig yaml: ${error.getMessage}"))
+      currentContextName <- kubeconfig.hcursor.get[String]("current-context")
+        .leftMap(_ => DeployFailure("kubeconfig is missing current-context"))
+
+      contexts <- kubeconfig.hcursor.get[Vector[Json]]("contexts")
+        .leftMap(_ => DeployFailure("kubeconfig is missing contexts"))
+      context <- findNamedEntry(contexts, currentContextName)
+        .toRight(DeployFailure(s"kubeconfig context not found: $currentContextName"))
+
+      clusterName <- context.hcursor.downField("context").get[String]("cluster")
+        .leftMap(_ => DeployFailure(s"kubeconfig context '$currentContextName' is missing cluster"))
+      userName <- context.hcursor.downField("context").get[String]("user")
+        .leftMap(_ => DeployFailure(s"kubeconfig context '$currentContextName' is missing user"))
+
+      clusters <- kubeconfig.hcursor.get[Vector[Json]]("clusters")
+        .leftMap(_ => DeployFailure("kubeconfig is missing clusters"))
+      cluster <- findNamedEntry(clusters, clusterName)
+        .toRight(DeployFailure(s"kubeconfig cluster not found: $clusterName"))
+      server <- cluster.hcursor.downField("cluster").get[String]("server")
+        .leftMap(_ => DeployFailure(s"kubeconfig cluster '$clusterName' is missing server"))
+      baseUri <- Uri.fromString(server)
+        .leftMap(error => DeployFailure(s"invalid kubeconfig server uri '$server': ${error.sanitized}"))
+
+      users <- kubeconfig.hcursor.get[Vector[Json]]("users")
+        .leftMap(_ => DeployFailure("kubeconfig is missing users"))
+      user <- findNamedEntry(users, userName)
+        .toRight(DeployFailure(s"kubeconfig user not found: $userName"))
+      token <- user.hcursor.downField("user").get[String]("token")
+        .leftMap(_ => DeployFailure(s"kubeconfig user '$userName' is missing token"))
+      trimmedToken = token.trim
+      _ <- Either.cond(trimmedToken.nonEmpty, (), DeployFailure(s"kubeconfig user '$userName' token is empty"))
+    } yield KubeconfigAuth(baseUri, trimmedToken)
+  }
+
+  private def resolveBaseUri(kubeconfigBaseUri: Option[Uri]): IO[Either[DeployFailure, Uri]] = IO {
     kubernetes.url
+      .orElse(kubeconfigBaseUri)
       .orElse {
         for {
           host <- sys.env.get("KUBERNETES_SERVICE_HOST")
           port = sys.env.getOrElse("KUBERNETES_SERVICE_PORT", "443")
         } yield Uri.unsafeFromString(s"https://$host:$port")
       }
-      .toRight(DeployFailure("missing kubernetes url and in-cluster endpoint variables"))
+      .toRight(DeployFailure("missing kubernetes url (config, kubeconfig, or in-cluster endpoint variables)"))
   }
 
-  private def resolveToken: IO[Either[DeployFailure, String]] =
-    kubernetes.token.map(_.value) match {
+  private def resolveToken(kubeconfigToken: Option[String]): IO[Either[DeployFailure, String]] =
+    kubernetes.token.map(_.value)
+      .orElse(kubeconfigToken)
+      .filter(_.nonEmpty) match {
       case Some(token) =>
         IO.pure(Right(token))
       case None =>
@@ -315,10 +401,14 @@ class KubernetesDeployBackend(
             IO.pure(Left(DeployFailure(s"failed to read kubernetes service account token path: ${error.getMessage}")))
           case Right(path) =>
             IO.blocking {
-              if (Files.exists(path))
-                Right(Files.readString(path).trim)
-              else
-                Left(DeployFailure("missing kubernetes token and service account token file"))
+              if (Files.exists(path)) {
+                val token = Files.readString(path).trim
+                if (token.nonEmpty)
+                  Right(token)
+                else
+                  Left(DeployFailure(s"kubernetes service account token file is empty: $tokenFile"))
+              } else
+                Left(DeployFailure("missing kubernetes token (config/kubeconfig) and service account token file"))
             }.handleError(error => Left(DeployFailure(s"failed to read kubernetes token file: ${error.getMessage}")))
         }
     }

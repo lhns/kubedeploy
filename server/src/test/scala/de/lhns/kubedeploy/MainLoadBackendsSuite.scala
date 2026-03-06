@@ -46,6 +46,7 @@ class MainLoadBackendsSuite extends CatsEffectSuite {
             url = Some(Uri.unsafeFromString("https://kubernetes.default.svc")),
             token = Some(Secret("k8s-token")),
             serviceAccountTokenFile = None,
+            kubeconfigFile = None,
             defaultNamespace = Some("default"),
           )),
         ),
