@@ -6,6 +6,7 @@ val V = new {
   val betterMonadicFor = "0.3.1"
   val cats = "2.13.0"
   val catsEffect = "3.6.3"
+  val catsEffectTestkit = "3.6.3"
   val circe = "0.14.15"
   val circeConfig = "0.10.0"
   val circeYaml = "0.16.1"
@@ -15,7 +16,6 @@ val V = new {
   val jgit = "7.5.0.202512021534-r"
   val logbackClassic = "1.5.26"
   val munit = "1.2.1"
-  val munitTaglessFinal = "0.2.0"
   val proxyVole = "1.1.8"
   val trustmanagerUtils = "1.1.0"
 }
@@ -29,7 +29,7 @@ lazy val commonSettings: Seq[Setting[_]] = Seq(
   addCompilerPlugin("com.olegpy" %% "better-monadic-for" % V.betterMonadicFor),
   libraryDependencies ++= Seq(
     "ch.qos.logback" % "logback-classic" % V.logbackClassic % Test,
-    "de.lolhens" %% "munit-tagless-final" % V.munitTaglessFinal % Test,
+    "org.typelevel" %% "cats-effect-testkit" % V.catsEffectTestkit % Test,
     "org.scalameta" %% "munit" % V.munit % Test,
   ),
   testFrameworks += new TestFramework("munit.Framework"),

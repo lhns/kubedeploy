@@ -1,10 +1,13 @@
 package de.lhns.kubedeploy
 
 import cats.effect.{IO, unsafe}
-import munit.TaglessFinalSuite
+import munit.{FunSuite, Location}
 
-import scala.concurrent.Future
+abstract class CatsEffectSuite extends FunSuite {
+  protected def runIO[A](f: IO[A]): A = f.unsafeRunSync()(unsafe.IORuntime.global)
 
-abstract class CatsEffectSuite extends TaglessFinalSuite[IO] {
-  override protected def toFuture[A](f: IO[A]): Future[A] = f.unsafeToFuture()(unsafe.IORuntime.global)
+  protected def testIO(name: String)(body: => IO[Unit])(implicit loc: Location): Unit =
+    test(name) {
+      runIO(body)
+    }
 }

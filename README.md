@@ -71,6 +71,33 @@ curl -sSf -H "Authorization: Bearer <secret>" -d "{
 }
 ```
 
+### Await Status
+
+Legacy format:
+
+```json
+"awaitStatus"
+```
+
+With per-request overrides:
+
+```json
+{
+  "awaitStatus": {
+    "timeoutSeconds": 120,
+    "pollIntervalMillis": 1000
+  }
+}
+```
+
+### Apply Yaml
+
+```json
+{
+  "applyYaml": "apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: my-app\n"
+}
+```
+
 ### Stack Config
 
 ```yaml
@@ -82,6 +109,10 @@ services:
     environment:
       CONFIG: |
         {
+          "awaitStatus": {
+            "timeoutSeconds": 120,
+            "pollIntervalMillis": 1000
+          },
           "targets": [
             {
               "id": "<target-id>",
@@ -98,17 +129,56 @@ services:
       - "8080:8080"
 ```
 
+### Kubernetes Config
+
+In-cluster (uses pod service account token + `KUBERNETES_SERVICE_HOST/PORT`):
+
+```json
+{
+  "targets": [
+    {
+      "id": "k8s-in-cluster",
+      "secret": "<secret>",
+      "kubernetes": {
+        "defaultNamespace": "default"
+      }
+    }
+  ]
+}
+```
+
+External cluster (explicit API URL + token):
+
+```json
+{
+  "targets": [
+    {
+      "id": "k8s-external",
+      "secret": "<secret>",
+      "kubernetes": {
+        "url": "https://my-kubernetes-api:6443",
+        "token": "<bearer-token>",
+        "defaultNamespace": "default"
+      }
+    }
+  ]
+}
+```
+
 ## Supported
 
 - Docker Swarm via Portainer API
-  - doesn't support deployment status yet
+  - supports `awaitStatus`
 - GitOps
   - doesn't support deployment status yet (via Argo CD, Flux or Kubernetes API)
+- Kubernetes API
+  - supports Deployment and StatefulSet updates
+  - supports server-side apply via `applyYaml`
+  - supports `awaitStatus` for Deployment and StatefulSet readiness
 
 ## Planned
 
 - Docker Swarm via Docker API
-- Kubernetes API
 
 ## License
 

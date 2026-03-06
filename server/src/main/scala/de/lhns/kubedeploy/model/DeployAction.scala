@@ -3,6 +3,7 @@ package de.lhns.kubedeploy.model
 import cats.syntax.functor._
 import io.circe._
 import io.circe.generic.semiauto.deriveCodec
+import io.circe.syntax._
 import io.circe.yaml.syntax._
 
 sealed trait DeployAction {
@@ -11,25 +12,54 @@ sealed trait DeployAction {
 
 object DeployAction {
   implicit val codec: Codec[DeployAction] = Codec.from(
-    Decoder[AwaitStatusAction.type].widen[DeployAction]
+    Decoder[AwaitStatusAction].widen[DeployAction]
       .or(Decoder[ImageAction].widen[DeployAction])
       .or(Decoder[EnvAction].widen[DeployAction])
+      .or(Decoder[ApplyYamlAction].widen[DeployAction])
       .or(Decoder[JsonAction].widen[DeployAction])
       .or(Decoder[RegexAction].widen[DeployAction])
       .or(Decoder[YamlAction].widen[DeployAction]),
     Encoder.instance(_.encode)
   )
 
-  object AwaitStatusAction extends DeployAction {
-    implicit val codec: Codec[AwaitStatusAction.type] = Codec.from(
+  case class AwaitStatusAction(timeoutSeconds: Option[Long], pollIntervalMillis: Option[Long]) extends DeployAction {
+    override def encode: Json =
+      if (timeoutSeconds.isEmpty && pollIntervalMillis.isEmpty)
+        Json.fromString("awaitStatus")
+      else
+        Json.obj(
+          "awaitStatus" -> AwaitStatusAction.Params(
+            timeoutSeconds = timeoutSeconds,
+            pollIntervalMillis = pollIntervalMillis,
+          ).asJson
+        )
+  }
+
+  object AwaitStatusAction {
+    implicit val codec: Codec[AwaitStatusAction] = Codec.from(
       Decoder.decodeString.emap {
-        case "awaitStatus" => Right(AwaitStatusAction)
+        case "awaitStatus" => Right(AwaitStatusAction(None, None))
         case _ => Left("invalid value")
-      },
-      Encoder.instance(_ => Json.fromString("awaitStatus"))
+      }.or(
+        Decoder.instance(_.downField("awaitStatus").as[Params])
+          .map(params => AwaitStatusAction(params.timeoutSeconds, params.pollIntervalMillis))
+      ),
+      Encoder.instance(_.encode)
     )
 
-    override def encode: Json = AwaitStatusAction.codec(this)
+    case class Params(timeoutSeconds: Option[Long], pollIntervalMillis: Option[Long])
+
+    object Params {
+      implicit val codec: Codec[Params] = deriveCodec
+    }
+  }
+
+  case class ApplyYamlAction(applyYaml: String) extends DeployAction {
+    override def encode: Json = ApplyYamlAction.codec(this)
+  }
+
+  object ApplyYamlAction {
+    implicit val codec: Codec[ApplyYamlAction] = deriveCodec
   }
 
   case class ImageAction(image: String) extends DeployAction {

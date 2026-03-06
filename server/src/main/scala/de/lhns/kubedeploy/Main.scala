@@ -4,7 +4,7 @@ import cats.effect._
 import cats.effect.std.Env
 import com.comcast.ip4s._
 import com.github.markusbernhardt.proxy.ProxySearch
-import de.lhns.kubedeploy.deploy.{DeployBackend, GitDeployBackend, PortainerDeployBackend}
+import de.lhns.kubedeploy.deploy.{DeployBackend, GitDeployBackend, KubernetesDeployBackend, PortainerDeployBackend}
 import de.lhns.kubedeploy.model.DeployTarget
 import de.lhns.kubedeploy.model.DeployTarget.DeployTargetId
 import de.lhns.kubedeploy.route.KubedeployRoutes
@@ -54,14 +54,22 @@ object Main extends IOApp {
     } yield ()
 
   def loadBackends(config: Config, client: Client[IO]): Map[DeployTargetId, DeployBackend] = config.targets.map {
-    case target@DeployTarget(id, _, None, Some(portainer)) =>
-      id -> new PortainerDeployBackend(target, portainer, client)
-
-    case target@DeployTarget(id, _, Some(git), None) =>
-      id -> new GitDeployBackend(target, git)
-
     case target =>
-      throw new RuntimeException("invalid target: " + target.id)
+      val backend: DeployBackend = (target.portainer, target.git, target.kubernetes) match {
+        case (Some(portainer), None, None) =>
+          new PortainerDeployBackend(target, portainer, client, config.awaitStatus)
+
+        case (None, Some(git), None) =>
+          new GitDeployBackend(target, git)
+
+        case (None, None, Some(kubernetes)) =>
+          new KubernetesDeployBackend(target, kubernetes, client, config.awaitStatus)
+
+        case _ =>
+          throw new RuntimeException("invalid target: " + target.id)
+      }
+
+      target.id -> backend
   }.toMap
 
   def serverResource[F[_] : Async](socketAddress: SocketAddress[Host], http: HttpApp[F]): Resource[F, Server] =

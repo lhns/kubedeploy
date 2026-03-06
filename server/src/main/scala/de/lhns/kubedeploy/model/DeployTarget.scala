@@ -2,7 +2,7 @@ package de.lhns.kubedeploy.model
 
 import de.lhns.kubedeploy.Secret
 import de.lhns.kubedeploy.model.DeployTarget.GitDeployTarget.Committer
-import de.lhns.kubedeploy.model.DeployTarget.{DeployTargetId, GitDeployTarget, PortainerDeployTarget}
+import de.lhns.kubedeploy.model.DeployTarget.{DeployTargetId, GitDeployTarget, KubernetesDeployTarget, PortainerDeployTarget}
 import io.circe.generic.semiauto._
 import io.circe.{Codec, Decoder, Encoder}
 import org.http4s.Uri
@@ -12,6 +12,7 @@ case class DeployTarget(
                          secret: Secret[String],
                          git: Option[GitDeployTarget],
                          portainer: Option[PortainerDeployTarget],
+                         kubernetes: Option[KubernetesDeployTarget],
                        )
 
 object DeployTarget {
@@ -39,6 +40,17 @@ object DeployTarget {
 
   object PortainerDeployTarget {
     implicit val codec: Codec[PortainerDeployTarget] = deriveCodec
+  }
+
+  case class KubernetesDeployTarget(
+                                     url: Option[Uri],
+                                     token: Option[Secret[String]],
+                                     serviceAccountTokenFile: Option[String],
+                                     defaultNamespace: Option[String],
+                                   )
+
+  object KubernetesDeployTarget {
+    implicit val codec: Codec[KubernetesDeployTarget] = deriveCodec
   }
 
   case class GitDeployTarget(

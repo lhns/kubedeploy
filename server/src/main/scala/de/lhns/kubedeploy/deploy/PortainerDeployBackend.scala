@@ -3,8 +3,9 @@ package de.lhns.kubedeploy.deploy
 import cats.data.EitherT
 import cats.effect.{Async, IO, Resource}
 import cats.syntax.all._
+import de.lhns.kubedeploy.Config
 import de.lhns.kubedeploy.JsonOf
-import de.lhns.kubedeploy.model.DeployAction.{EnvAction, ImageAction, JsonAction, RegexAction, YamlAction}
+import de.lhns.kubedeploy.model.DeployAction.{AwaitStatusAction, EnvAction, ImageAction, JsonAction, RegexAction, YamlAction}
 import de.lhns.kubedeploy.model.DeployResult.{DeployFailure, DeploySuccess}
 import de.lhns.kubedeploy.model.DeployTarget.PortainerDeployTarget
 import de.lhns.kubedeploy.model.{Deploy, DeployTarget}
@@ -23,6 +24,7 @@ class PortainerDeployBackend(
                               val target: DeployTarget,
                               portainer: PortainerDeployTarget,
                               client: Client[IO],
+                              awaitStatus: Option[Config.AwaitStatus],
                             ) extends DeployBackend with ConsolidateActions {
   private val logger = getLogger
 
@@ -100,11 +102,40 @@ class PortainerDeployBackend(
     )
   }
 
+  private def awaitStackStatus(
+                                stackId: Long,
+                                authHeader: Authorization,
+                                awaitAction: AwaitStatusAction,
+                              ): EitherT[IO, DeployFailure, Unit] = {
+    val resolvedAwait = Config.resolveAwaitStatus(Some(awaitAction), awaitStatus)
+
+    EitherT.right(IO.monotonic).flatMap { start =>
+      def loop: EitherT[IO, DeployFailure, Unit] =
+        EitherT.right(retryClient.expect[JsonOf[Stack]](Request[IO](
+          uri = portainer.url / "api" / "stacks" / stackId,
+          headers = Headers(authHeader),
+        ))).flatMap { stack =>
+          if (stack.value.Status == 1)
+            EitherT.rightT[IO, DeployFailure](())
+          else
+            EitherT.right(IO.monotonic).flatMap { now =>
+              if (now - start >= resolvedAwait.timeout)
+                EitherT.leftT[IO, Unit](DeployFailure(s"timed out waiting for stack '${stackId}' to become active"))
+              else
+                EitherT.right(IO.sleep(resolvedAwait.pollInterval)) *> loop
+            }
+        }
+
+      loop
+    }
+  }
+
   override def deploy(request: Deploy): EitherT[IO, DeployFailure, DeploySuccess] = {
     val (resourceEndpoint, resourceName): (Long, String) = request.resource match {
       case s"$endpoint/$name" => (endpoint.toLong, name)
       case name => (1L, name)
     }
+    val awaitAction = request.actions.collectFirst { case action: AwaitStatusAction => action }
 
     for {
       authResponse <- EitherT.right(retryClient.expect[JsonOf[AuthResponse]](Request[IO](
@@ -153,7 +184,7 @@ class PortainerDeployBackend(
         })((acc, action) => acc.map { stackFileUpdate =>
           action match {
             case ImageAction(image) =>
-              stackFileUpdate.copy(StackFileContent = stackFileUpdate.StackFileContent.replace(
+              stackFileUpdate.copy(StackFileContent = stackFileUpdate.StackFileContent.replaceAll(
                 "(?<=image: ).*?(?=\\r?\\n|$)",
                 image
               ))
@@ -167,6 +198,8 @@ class PortainerDeployBackend(
               stackFileUpdate.copy(Env = envAction.transform(
                 stackFileUpdate.Env.map(e => e.name -> e.value).toMap
               ).map(e => EnvVar(e._1, e._2)).toSeq)
+            case _: AwaitStatusAction =>
+              stackFileUpdate
             case e =>
               logger.warn("unsupported action: " + e)
               stackFileUpdate
@@ -179,7 +212,13 @@ class PortainerDeployBackend(
         uri = portainer.url / "api" / "stacks" / stackId +? ("endpointId" -> stack.value.EndpointId),
         headers = Headers(authHeader),
       ).withEntity(JsonOf(stackFileUpdate))))
+      _ <- awaitAction match {
+        case Some(action) =>
+          awaitStackStatus(stackId, authHeader, action)
+        case None =>
+          EitherT.rightT[IO, DeployFailure](())
+      }
     } yield
-      DeploySuccess(awaitedStatus = false)
+      DeploySuccess(awaitedStatus = awaitAction.nonEmpty)
   }
 }
